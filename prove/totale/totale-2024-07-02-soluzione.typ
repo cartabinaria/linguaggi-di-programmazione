@@ -1,4 +1,4 @@
-#import "@preview/finite:0.3.0": automaton
+#import "@preview/finite:0.5.0": automaton
 
 #show link: underline 
 
@@ -115,17 +115,17 @@ trovate errori segnalateli o meglio correggeteli direttamente_ :)
     #align(
       center,
       $
-        - "First"(a A b) sect "First"(epsilon) = emptyset \
-        {a} sect {epsilon} = emptyset \ \
+        - "First"(a A b) inter "First"(epsilon) = emptyset \
+        {a} inter {epsilon} = emptyset \ \
 
-        - "First"(a A b) sect "Follow"(A) = emptyset \
-        {a} sect {b, \$} = emptyset \ \
+        - "First"(a A b) inter "Follow"(A) = emptyset \
+        {a} inter {b, \$} = emptyset \ \
 
-        - "First"(b B) sect "First"(epsilon) = emptyset \
-        {b} sect {epsilon} = emptyset \ \
+        - "First"(b B) inter "First"(epsilon) = emptyset \
+        {b} inter {epsilon} = emptyset \ \
 
-        - "First"(b B) sect "Follow"(B) = emptyset \
-        {b} sect {\$} = emptyset \ \
+        - "First"(b B) inter "Follow"(B) = emptyset \
+        {b} inter {\$} = emptyset \ \
       $
     )
     $G$ è di classe $\LL(1)$ per un noto teorema visto a lezione.

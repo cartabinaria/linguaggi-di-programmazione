@@ -1,5 +1,5 @@
-#import "@preview/syntree:0.2.0": syntree
-#import "@preview/finite:0.3.0": automaton
+#import "@preview/syntree:0.2.1": syntree
+#import "@preview/finite:0.5.0": automaton
 
 #set align(center)
 = Soluzione Linguaggi Totale 
@@ -53,7 +53,7 @@ trovate errori segnalateli o meglio correggeteli direttamente_ :)
   linguaggio riconosciuto è l'unico l'inguaggio che riconoscono entrambi, perché
   per andare in uno stato di errore basta che ci vada solo uno dei due. Quindi
   il linguaggio riconosciuto è l'intersezione dei linguaggi originali: 
-  $L_1 sect L_2$
+  $L_1 inter L_2$
 
 + Costruiamo l'automa:
   #align(

@@ -1,4 +1,4 @@
-#import "@preview/finite:0.3.0": automaton
+#import "@preview/finite:0.5.0": automaton
 
 #set align(center)
 = Soluzione Linguaggi Totale 
