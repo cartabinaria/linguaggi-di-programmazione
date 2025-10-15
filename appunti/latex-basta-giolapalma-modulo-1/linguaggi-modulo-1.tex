@@ -1,0 +1,121 @@
+\documentclass{report}
+
+\input{latex-temp/preamble}
+\input{latex-temp/macros}
+\input{latex-temp/letterfonts}
+\usepackage[T1]{fontenc}    % Per la corretta codifica dei caratteri
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc} % Se salvi il file in UTF-8
+\usepackage{tikz-qtree}
+\usepackage{graphicx}
+\usepackage{cancel}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{etoolbox}
+\usepackage{listings}
+
+\usetikzlibrary{automata, positioning, arrows, shapes.geometric, decorations.pathmorphing}
+
+% Impostazioni Tikz %
+\tikzset{
+    ->, % makes the edges directed
+    >=stealth, % makes the arrow heads bold
+    node distance=3cm, % specifies the minimum distance between two nodes. Change if necessary.
+    every state/.style={thick, fill=gray!10}, % sets the properties for each ’state’ node
+    initial text=$start$, % sets the text that appears on the start arrow
+}
+
+%frccina ondulata
+\tikzset{
+    wavearrow/.style={
+        -{Stealth[scale=1.2]}, 
+        decorate,
+        decoration={snake, amplitude=1mm, segment length=5mm},
+        thick
+    }
+}
+
+% Tikz shapes (manca initial, state e accept) %
+\tikzstyle{startstop} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30]
+\tikzstyle{process} = [rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=orange!30]
+\tikzstyle{decision} = [diamond, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!30]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+\tikzstyle{block} = [rectangle, rounded corners, draw, align=center, text width=3cm, minimum height=1cm]
+\tikzstyle{arrow} = [thick, ->, >=stealth]
+\tikzstyle{stack} = [rectangle, draw, align=center, minimum width=1.3cm, minimum height=0.5cm]
+
+
+\lstdefinestyle{cstyle}{
+  language=C,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{red}\bfseries,
+  commentstyle=\color{gray},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  tabsize=2,
+  breaklines=true,
+  showstringspaces=false
+}
+
+
+\lstset{
+  language=Pascal,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  tabsize=2,
+  breaklines=true,
+  showstringspaces=false
+}
+
+\newcounter{linecolor}
+\newcommand{\setlinecolor}{%
+  \stepcounter{linecolor}%
+  \ifodd\value{linecolor}%
+    \color{red}%
+  \else%
+    \color{black}%
+  \fi}
+  
+\newlist{redblacklist}{itemize}{1}
+\setlist[redblacklist]{
+  label={\setlinecolor\rule{2pt}{1.2em}}, % Altezza della linea regolabile
+  leftmargin=*,
+  itemindent=-0.7cm,
+  before={\setcounter{linecolor}{0}},
+}
+
+\title{\Huge{Linguaggi di programmazione}\\Appunti}
+\author{\huge{Giovanni Palma e Alex Basta}}
+\date{}
+\pagenumbering{gobble}
+
+\graphicspath{{img/}}
+
+\begin{document}
+
+\maketitle
+\newpage% or \cleardoublepage
+% \pdfbookmark[<level>]{<title>}{<dest>}
+\pdfbookmark[section]{\contentsname}{toc}
+
+\tableofcontents
+
+\pagebreak
+
+\include{paginette/macchine-astratte}
+\include{paginette/introduzione-ai-linguaggi-normali-grammatiche}
+\include{paginette/struttura-di-un-compilatore-sematica-statica-semantica-dinamica}
+\include{paginette/analisi-lessicale}
+\include{paginette/linguaggi-liberi-nondeterministici}
+\include{paginette/linguaggi-liberi-deterministici}
+\include{paginette/top-down-parser}
+\include{paginette/bottom-up-parser}
+
+zio pera
+\end{document}
