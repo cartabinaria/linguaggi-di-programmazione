@@ -1,0 +1,327 @@
+\chapter{Esercitazioni}
+\section{Scope}
+\subsection{Esercizio 1}
+\subsubsection{Testo}
+\begin{lstlisting}[language=C]
+    {
+        int x =2;
+        int func ( int y){
+            x = x+y;
+            write(x);
+        }
+        {
+            int x = 5;
+            func(x);
+            write(x);
+        }
+        write(x);
+    }
+\end{lstlisting}
+
+\begin{itemize}
+    \item Si descriva il comportamento del programma assumendo uno scope statico.
+    \item Si descriva il comportamento del programma assumendo uno scope dinamico.
+\end{itemize}
+
+\subsubsection{Soluzione}
+\begin{itemize}
+    \item \textbf{Scope statico}: il programma stampa 7, 5, 7
+    \item \textbf{Scope dinamico}: il programma stampa 10, 10, 2
+\end{itemize}
+\subsection{Esercizio 2}
+\subsubsection{Testo}
+\begin{lstlisting}[language=C]
+    {
+        int x = 0;
+        int next () {
+            x = x+1;
+            write(x);
+        }
+        int exec(){
+            int x = 3;
+            next();
+            write(x);
+        }
+        exec();
+        write(x);
+    }
+\end{lstlisting}
+\begin{itemize}
+    \item Si descriva il comportamento del programma assumendo uno scope statico
+    \item Si descriva il comportamento del programma assumendo uno scope dinamico
+\end{itemize}
+\subsubsection{Soluzione}
+\begin{itemize}
+    \item \textbf{Scope statico}: il programma stampa 1, 3, 1
+    \item \textbf{Scope dinamico}: il programma stampa 4 infatti \texttt{next} prenderà l'istanza di x dell'unltimo ambiente non disattivato, ovvero exec, modifico poi il valore di \texttt{x} nell'ambiente exec, 4 dato che l'amiente di exec è stato modificato, 0 dato che \texttt{exec} è stato disattivato si ha che \texttt{x = 0}
+\end{itemize}
+
+\subsection{Esercizio 3}
+\subsubsection{Testo}
+\begin{lstlisting}[language=C]
+    {
+        int x = 0;
+        void pippo(value int y, rif int z){
+            z= x+y+z;
+        }
+        {
+            int x = 1;
+            int y = 100;
+            int z = 30;
+            pippo(x++,x); // ricordarsi che il x++ prima passa il valore di x nudo e crudo poi come side-effect modica x staticamente in questo caso, pertanto il secondo parametro sara' 2: pippo(1, 2) -> 3 = 0+ 1 +2
+            pippo(x++, x); // pippo(3, 4) -> 7 = 0 + 3 + 4
+            write(x); // 7
+        }
+        write(x); // 0 perche' il blocco e' finito, terminato e riprende la variabile x dichiarata all'inizio
+    }
+\end{lstlisting}
+Si descriva il comportamento del programma assumendo uno scope statico
+
+\subsubsection{Soluzione}
+Il programma stampa 7, 0
+
+\subsection{Esercizio 4}
+\subsubsection{Testo}
+\begin{lstlisting}[language=C]
+    {
+        void pippo(value int y, value int z){
+            x=y+z;
+        }
+        int x = 100;
+        pippo(x++, x); // pippo(100, 101) -> 201, quindi x = 201
+        pippo(x++, x); // pippo(201, 202) -> 403, quindi x = 403
+        write(x); // 403
+    }
+\end{lstlisting}
+Si descriva il comportamento del programma assumendo uno scope dinamico
+
+\subsubsection{Soluzione}
+Il programma stampa 403
+
+\subsection{Esercizio 5}
+\subsubsection{Testo}
+\begin{lstlisting}[language=C]
+{  
+    int f(value int k){ //1. 2, 1. 1
+        int g (value int n){
+            return n+y //
+        };
+        int x=10;
+        int y=10;
+        if k=1 return g(x) + g(y); // 40
+        else {
+            int x = 30; 
+            int y= 30;
+            return f(k-1);
+        }
+    }
+    int x =50;
+    int y=50;
+    x= f(2); // x = 40
+    write(x); // 40
+}
+\end{lstlisting}
+si risolva utilizzando uno scope dinamico
+
+\subsubsection{Soluzione}
+Il programma stampa 40
+
+\subsection{Esercizio 6}
+\subsubsection{Testo}
+\begin{lstlisting}[language=C]
+{
+    int x =10;
+    int v =5;
+    void B(){
+        write(x);
+    }
+    void A(z){
+        int x = z * v;
+        B();
+    }
+    A(??) // si ha che qualsiasi valore di al posto di ?? si scrivera' 10
+}
+\end{lstlisting}
+Fornire una chiamata alla funzione A di modo che il prgramma, usando scope statico stami il valore 10
+\begin{lstlisting}[language=C]
+    {
+        int x =10;
+        int v =5;
+        void B(){
+            write(x);
+        }
+        void A(z){
+            int x = z * v;
+            B();
+        }
+        A(??) // si scrive 2 cazzo
+    }
+\end{lstlisting}
+
+fornire una chiamata per stampare il valore 10, ma usando uno scope dinamico
+
+\subsubsection{Soluzione}
+PEr la prima parte si stampera sempre 10, per la seconda parte si passa il parametro 2
+
+\subsection{Esercizio 7}
+\subsubsection{Testo}
+\begin{lstlisting}[language=C]
+{
+    int x =1;
+    int y=2;
+    void A(){
+        int x = 2;
+        int k = 3;
+    }
+    void B(){
+        int x = 5; // 2
+        A();
+        // ** 1**
+        x=2;
+        C():
+    }
+    void C(){
+        int z =5;
+        // ** 2 **
+    }
+    B();
+}
+\end{lstlisting}
+SI descriva qual è il contenuto delle variabili attive al punto **1** e **2**, utilizzando scope statico e dinamico
+
+\subsubsection{Soluzione}
+\begin{itemize}
+    \item \textbf{Scope statico}:
+    \begin{itemize}
+        \item \textbf{Punto 1}: \texttt{x = 5}, \texttt{y = 2}
+        \item \textbf{Punto 2}: \texttt{x = 1}, \texttt{y = 2}, \texttt{z = 5}
+    \end{itemize}
+    \item \textbf{Scope dinamico}:
+    \begin{itemize}
+        \item \textbf{Punto 1}: \texttt{x = 5}: nel momento in cui si attiva \texttt{A()} lo shadowing impone che che x in memoria è 2, ma appena A termina si "disattiva" e si riprende x=5 definito nel punto B, \texttt{y = 2}
+        \item \textbf{Punto 2}: \texttt{x = 2}, \texttt{y = 2}, \texttt{z = 5}
+    \end{itemize}
+\end{itemize}
+
+\section{sottoprogrammi}
+
+\subsection{Es. 1}
+\subsubsection{Testo}
+
+Considerare un linguaggio che ammette il passaggio per nome. Dire cosa stampra il codice:
+\begin{lstlisting}[language=C]
+    int k = 2;
+    int A[5];
+    A = {1, 2, 4, 7, 3};
+    void swap(int name x, int name y) {
+        int temp = x; // temp = 2
+        x = y; // x = A[k] -> x = A[2] -> x = 4
+        y = temp; //A[4] = 2
+        write(A); // A = {1, 2, 4, 7, 4};
+    }
+    swap(k, A[k]); 
+\end{lstlisting}
+
+\subsubsection{svolgimento}
+
+è probabile che scriverà \texttt{A = {1, 2, 4, 7, 4};
+}
+\subsection{Es. 2}
+\subsubsection{Testo}
+
+L'esecuzione del seguente frammento di codice su una certa implementazione risulta nella stampa dei valori 4 e 10.
+\begin{lstlisting}[language=C]
+    int W[10];
+    int x = 4;
+    for (int i=0; i<10; i++) W[i]=i; // quindi, [0,1,2,3,4,5,6,7,8,9]
+    
+    void foo(int x; int y){
+        x = x+1;
+        y=10;
+    }
+
+    foo (x, W[x])
+    write (W[4]) // 4
+    write (W[5]) // 10
+\end{lstlisting}
+
+Si fornisca una possibile spiegazione.
+
+
+\subsubsection{svolgimento}
+
+Una possibile soluzione è che entrambi i paramenti siano passati per nome, infatti se andiamo a valutare i parametri dopo la macro espansione tutto torna, provare per credere
+
+\subsection{Es. 3}
+\subsubsection{Testo}
+ La definizione di un certo linguaggio di programmazione specifica che la valutazione procede da sinistra a destra, ma nel valutare un'espressione complessa eventuali sottoespressioni che vi compaiono più di una volta devono essere valutate una sola volta, usando il valore così calcolato anche per le altre occorrenze della stessa sottoespressione. Un assegnamento è una particolare forma di espressione complessa e il passaggio dei parametri avviene per nome. Si consideri il seguente frammento di codice:
+\begin{lstlisting}[language=C]
+
+    int x = 1;
+    int A[5];
+    for (int i=0; i<5; i++) A[i] = i; // A = {0,1,2,3,4}
+
+    void f(int name x, int name y){
+        x= y + x + x;
+    }
+
+    f(A[x++],x) // dopo la chiamata avremo:
+    // A[2] = A[2] + 1 +1 (dato che avremo modificato x nello scope del main)
+    //Quindi A[2] = 1 + 2 +2
+\end{lstlisting}
+Qual'è lo stato del vettore A dopo la chiamata della funzione f?
+
+\subsubsection{Soluzione}
+A = {0,5,2,3,4}
+
+\subsection{Es. 4}
+\subsubsection{Testo}
+È dato il seguente frammento di codice in uno pseudolinguaggio con goto, scope dinamico e blocchi annidati etichettati (indicati con A :{...}):
+\begin{lstlisting}[language=C]
+A: { 
+    int x = 5;
+    int y = 4;
+    goto B;
+    B: {
+        int x = 4;
+        int z = 3;
+        goto C;
+    }
+    C: {int x = 3;
+        D: {int x = 2;}
+        goto E;
+    }
+    E: {
+        int x = 1; // (***)
+    
+    }
+}   
+\end{lstlisting}
+
+Lo scope dinamico è gestito mediante CRT. Si illustri graficamente la situazione della CRT nel momento in cui l'esecuzione raggiunge il punto segnato con il commento (***)
+\subsection{Es. 5}
+\subsubsection{Testo}
+
+Si consideri il seguente schema di codice scritto in uno pseudolinguaggio che usa scope statico e passaggio per riferimento
+
+\begin{lstlisting}[language=C]
+{
+    int x = 0;
+    int A(reference int y) {
+        int x =2;
+        y=y+1;
+        return B(y)+x;
+    }
+    int B(reference int y){
+        int C(reference int y){
+            int x = 3;
+            return A(y)+x+y;
+        }
+        if (y==1) return C(x)+y;
+        else return x+y;
+    }
+write (A(x));
+}
+\end{lstlisting}
+
+Supponiamo che lo scope statico sia implementato mediante display. Si dia graficamente la situazione del display e della pila dei record di attivazione al momento in cui il controllo entra per la seconda volta nella funzione A. Per ogni record di attivazione si dia solo il valore del campo destinato a salvare il valore precedente del display
