@@ -1,0 +1,276 @@
+% \begin{document}
+\chapter{Nomi e Ambiente}
+
+Nell'evoluzione dei linguaggi di programmazione, i \textit{nomi} hanno avuto un ruolo fondamentale nella sempre maggiore astrazione rispetto al linguaggio macchina. 
+
+\dfn{Nome}{
+  I nomi sono solo una sequenza (significativa o meno) di caratteri che sono usati per rappresentare un oggetto, che puo' essere uno spazio di memoria se vogliamo etichettare dei dati, o un insieme di comandi nel caso di una funzione. 
+}
+
+\section{Nomi e Oggetti denotabili}
+
+Spesso, i nomi sono \textit{identificatori}, ovvero token alfanumerici, ma possono essere usati anche simboli (+,-,...). E' importante ricordare che il nome e l'oggetto denotato non sono la stessa cosa, infatti un oggetto puo' avere diversi nomi (\textit{aliasing}) e lo stesso nome puo' essere attribuito a diversi oggetti in momenti diversi (\textit{attivazione} e \textit{deattivazione}).  
+
+\dfn{Oggetti denotabili}{
+  Sono gli oggetti a cui e' possibile attribuire un nome.
+}
+\nt{Non centra con la programmazione ad oggetti}
+
+Possono essere:
+\begin{itemize}
+\item Predefiniti: tipi e operazioni primitivi, ...
+  \item Definibili dall'utente: variabili, procedure, ...
+\end{itemize}
+
+Quindi il legame fra nome e oggetto (chiamato \textbf{binding}) puo' avvenire in momenti diversi:
+\begin{itemize}
+\item Statico: prima dell'esecuzione del programma
+\item Dinamico: durante l'esecuzoine del programma
+\end{itemize}
+
+\section{Ambienti e Blocchi}
+
+Non tutti i legami fra nomi e oggetti vengono creati all'inizio del programma restando immutati fino alla fine. Per capire come i binding si comportano, occorre introdurre il concetto di \textit{ambiente}:
+
+\dfn{Ambiente}{
+  Insieme di associazioni nome/oggetto denotabile che esistono a runtime in un punto specifico del programma ad un momento specifico durante l'esecuzione.
+}
+
+Solitamente nell'ambiente non vengono considerati i legami predefiniti dal linguaggio, ma solo quelli creati dal programmatore utilizzando le \textit{dichiarazioni}, costrutti che permettono di aggiungere un nuovo binding nell'ambiente corrente.
+
+Notare che e' possibile che nomi diversi possano denotare lo stesso oggetto. Questo fenomeno e' detto \textit{aliasing} e succede spesso quando si lavora con puntatori.
+
+\subsection{Blocchi}
+
+Tutti i linguaggi di programmazione importanti al giorno d'oggi utilizzano i \textit{blocchi}, strutture introdotte da ALGOL 60 che servono per strutturare e organizzare l'ambiente:
+
+\dfn{Blocco}{
+  Pezzo contiguo del programma delimitato da un inizio e una fine che puo' contenere dichiarazioni \textbf{locali} a quella regione.
+}
+
+Puo' essere:
+\begin{itemize}
+  \item In-line (o anonimo): puo' apparire in generale in qualunque punto nel programma e non corrisponde a una procedura. 
+\item Associato a una procedura 
+\end{itemize}
+
+Permettono di strutturare e riutilizzare il codice, oltre a ottimizzare l'occupazione di memoria e rendere possibile la ricorsione. 
+
+\subsection{Tipi di Ambiente}
+
+Un'altro meccanismo importante che forniscono i blocchi e' il loro \textit{annidameno}, ovvero l'inclusione di un blocco all'interno di un altro (non la sovrapposizione parziale). In questo caso, se i nomi locali del blocco esterno sono presenti nell'ambiente del blocco interno, si dice che i nomi sono \textit{visibili}. Le regole che determinano se un nome e' visibile o meno a un blocco si chiamano \textit{regole di visibilita'} e sono in generale:
+
+\begin{itemize}
+\item Un nome locale di un blocco e' visibile a esso e a tutti i blocchi annidati.
+  \item Se in un blocco annidato viene creata una nuova dichiarazione con lo stesso nome, questa ridefinizione \textit{nasconde} quella precedente.
+\end{itemize}
+
+\dfn{Ambiente associato a un blocco}{
+L'ambiente di un blocco e' diviso in:
+\begin{itemize}
+\item \textbf{locale}: associazioni create all'ingresso nel blocco:
+  \begin{itemize}
+  \item variabili locali
+  \item parametri formali (nel caso di un blocco associato a una procedura)
+  \end{itemize}
+\item \textbf{non locale}: associazioni ereditate da altri blocchi (senza considerare il blocco globale), che quindi non sono state dichiarate nel blocco corrente
+\item \textbf{globale}: associazioni definite nel blocco globale (visibile a tutti gli altri blocchi)
+\end{itemize}
+}
+
+\subsection{Operazioni sull'ambiente}
+\begin{itemize}
+\item Creazione: dichiarazione locale, in cui introduco nell'ambiente locale una nuova associazione
+\item Riferimento: uso di un nome di un oggetto denotato
+\item Disattivazione/Riattivazione: quando viene ridefinito un certo nome, all'interno del blocco viene disattivato. Quando esco dal blocco riattivo la definizione originale
+\item Distruzione: le associazioni locali del blocco dal quale si esce vengono distrutte
+\end{itemize}
+
+\nt{
+  Creazione e distruzione di un \textit{oggetto denotato} non coincide necessariamente con la creazione o distruzione sull'associazione tra il nome e l'oggetto stesso, per essere più precisi nemmeno la vita dell'oggetto e del legame è la stessa. Verrà quindi mostrato nel dettaglio 
+}
+
+\subsection{Vita di un oggetto}
+\dfn{Vita}{
+  Si definisce \textbf{tempo di vita} o \textbf{lifetime} di un oggetto o legame il tempo che interre tra la sua creazione e la sua distruzione
+}
+
+Per comprendere meglio questo concetto, i seguenti notino gli \textit{eventi fondamentali} 
+\begin{redblacklist}
+  \item Creazione di un oggetto  
+  \item Creazione di un legame per l’oggetto  
+  \item Riferimento all’oggetto, tramite il legame  
+  \item Disattivazione di un legame  
+  \item Riattivazione di un legame  
+  \item Distruzione di un legame  
+  \item Distruzione di un oggetto  
+\end{redblacklist}
+
+Dal punto 1 e 7 è \textit{la vita dell'oggetto}, mentre dall'evento 2 al 6 è \textit{la vita dell'associazione}
+
+\nt{È pertanto vero, quindi, che la vita di un oggetto non coincide con la vita dei legami per quell'oggetto}
+
+Esistono 2 modi per categorizzare il tempo di vita di un legame/associazione:
+
+\begin{itemize}
+  \item Vita dell’oggetto più \textbf{lunga} di quella del legame
+  
+  Si consideri questo codice
+  
+  \begin{lstlisting}[language=Pascal]
+    program ExampleCode;
+    
+    procedure P(var X: integer); begin {...} end;
+    {...}
+    var A:integer;
+    {...}
+      
+    P(A); {chiamata a P con A}
+  \end{lstlisting}
+  Nel codice dato, inizialmente il nome A viene associato a un oggetto (un valore intero). Quando si chiama la procedura P(A), l'argomento A viene passato per riferimento, il che significa che all'interno della procedura non viene creato un nuovo oggetto, ma semplicemente un nuovo nome per lo stesso oggetto: X.
+
+  Durante l'esecuzione della procedura, X e A sono quindi due nomi che fanno riferimento allo stesso valore in memoria. Qualsiasi modifica apportata a X all'interno della procedura si riflette direttamente su A.
+
+  Una volta terminata l'esecuzione della procedura, il legame tra X e l'oggetto viene distrutto, mentre A continua a riferirsi allo stesso valore, eventualmente modificato dalla procedura. Questo è un classico esempio in cui la durata del legame tra un nome (X) e un oggetto è più breve della vita dell'oggetto stesso
+  \item Vita dell’oggetto più \textbf{breve} di quella del legame
+  
+  Si consideri questo codice, piuttosto nasty in C:
+  \begin{lstlisting}[language=C]
+    #include <stdio.h>
+    #include <stdlib.h>
+    
+    int main() {
+        int *X, *Y;
+        X = (int *) malloc(sizeof(int));
+        Y = X;
+        free(X);
+        X = NULL;
+        return 0;
+    
+    }
+  \end{lstlisting}
+  
+  Nel codice illustrato vengono creati due puntatori. L'oggetto puntato da \texttt{X},  
+  attraverso il comando \texttt{malloc}, punta a un'area di memoria allocata dinamicamente.  
+  Di conseguenza, assegnando \texttt{Y = X}, anche \texttt{Y} farà riferimento  
+  allo stesso oggetto puntato da \texttt{X}.  
+
+  Col comando \texttt{free(X)}, l'oggetto alla fine della catena viene deallocato,  
+  ovvero la memoria precedentemente allocata viene liberata.  
+  Successivamente, l'istruzione \texttt{X = NULL} imposta \texttt{X} a \texttt{NULL},  
+  indicando che non punta più a un'area valida di memoria.  
+
+  Tuttavia, il puntatore \texttt{Y} continua a riferirsi all'oggetto  
+  che è stato deallocato. Questo crea un \textit{dangling pointer} (puntatore pendente),  
+  poiché il legame tra \texttt{Y} e l'oggetto non esiste più in modo sicuro.  
+  Accedere a \texttt{Y} dopo la deallocazione può portare a comportamenti indefiniti e DA EVITARE CAZZO 
+
+
+\end{itemize}
+
+
+
+
+\section{Regole di scope}
+
+Innanzi tutto fornirò la definizione di scope
+
+\dfn{Scope}{
+  Lo \textbf{scope} (o \textbf{ambito}) è un concetto semantico che determina in quali porzioni di un programma una variabile o un nome è visibile e utilizzabile. Le regole di scope stabiliscono come i riferimenti ai nomi vengono risolti all'interno di un determinato contesto di esecuzione, garantendo che l'uso delle variabili sia coerente e prevedibile.
+}
+
+Come detto in precedenza una dichiarazione locale ad un blocco è visibile in quel blocco e in tutti i blocchi in esso annidati, a meno ché intervenga in tali blocchi una nuova dichiarazione dello stesso nome che nasconderà quello precedente (shadowing)
+
+Occorre tuttavia determinare come interpretare le regole di visibilità di una variabile in presenza di porzioni di blocchi eseguiti in posizioni diverse dalle loro definizioni  e in presenza di ambienti non locali... nasty vero?
+
+Vi sono due filosofie principali
+\begin{itemize}
+  \item \textbf{Statico}: Basato sul testo del programma 
+  \item \textbf{Dinamico}: Basato sul flow di esecuzione 
+\end{itemize}
+
+Prima di andare avanti, si noti la seguente annotazione 
+\nt{
+    Entrambe gli appricci differiscono solo in presenza congiunta di ambiente non locale e non globale e procedura
+}
+
+Vabbuò, è normale non capirci un catso solo a parole, si consideri il seguente testo:
+\begin{lstlisting}[language=C]
+  A:{int x = 0;
+    void pippo(int n){
+      x = n+1;
+    }
+    pippo(3);
+    write(x);
+    {
+      int x = 0;
+      pippo(3);
+      write(x);
+    }
+    write(x);
+  }
+\end{lstlisting}
+Che cosa caspita scriveremo a riga 10? Ebbene dipenderà dal tipo di regola di scope, o statica o dinamica
+
+Di seguito sono riportati nel dettaglio
+
+\subsection{Scope statico}
+\dfn{Scope statico}{
+    La regola dello \textbf{scope statico} (o \textbf{regola dello scope annidato più vicino}) si basa sui seguenti principi:
+
+    \begin{enumerate}
+        \item \textbf{Ambiente locale di un blocco}: Le dichiarazioni all'interno di un blocco definiscono il suo ambiente locale. Questo include solo le dichiarazioni presenti direttamente nel blocco stesso e non quelle eventualmente presenti nei blocchi annidati al suo interno.
+        
+        \item \textbf{Ricerca delle associazioni di un nome}: Se un nome viene utilizzato all'interno di un blocco, si segue questa gerarchia per determinare quale dichiarazione è valida:
+        \begin{itemize}
+            \item Se esiste una dichiarazione del nome nel \textbf{blocco locale}, questa è quella valida.
+            \item Se il nome non è dichiarato nel blocco locale, si cerca nel \textbf{blocco immediatamente contenitore}.
+            \item Se il nome non è ancora trovato, si continua a risalire nei blocchi contenitori fino al più esterno.
+            \item Se il nome non è dichiarato nemmeno nel blocco più esterno, si cerca nell'\textbf{ambiente predefinito del linguaggio}.
+            \item Se il nome non è presente neanche nell’ambiente predefinito, si genera un errore.
+        \end{itemize}
+        
+        \item \textbf{Blocchi con nome}: Un blocco può essere \textbf{assegnato a un nome}, e in questo caso tale nome diventa parte dell'ambiente locale del \textbf{blocco immediatamente contenitore}. Questo vale anche per i blocchi associati a procedure o funzioni.
+    \end{enumerate}
+    
+}
+Molto più semplicemente si può dire che
+\nt{
+    Un nome non locale è risolto nel blocco che \textit{testualmente} lo racchiude
+}
+
+Pertanto nel codice d'esempio nel primo \texttt{write(x)} verrà stampato 4, nel secondo 0 e nel terzo 4, in quanto la \texttt{x} che la funzione \texttt{pippo(3)} modifica è quella dichiarata all'interno del blocco che lo racchiude, in questo caso A. Nel blocco B non verrà modificata la \texttt{x} racchiusa nello stesso quindi si stamperà, quindi 0.
+
+Si ha quindi una forte indipendenza dalla posizione della posizione da parte dei nomi. Ad esempio se si dichiara una funzione all'interno di un blocco, il corpo della procedura si riferirà sempre alle regole di scope medesime del blocco in cui è stata dichiarata, pertanto dovunque la funzione verrà chiamata lo scope a cui riferisce sarà sempre lo stesso
+
+Tra i vantaggi dello scope statico troviamo una maggiore comprensione per il programmatore, ogni nome può essere collegato alla sua dichiarazione semplicemente analizzando la struttura del codice, senza dover simulare l’esecuzione e la facilità di analisi del programma da parte del compilatore che può determinare tutte le occorrenze di un nome e fare controlli di correttezza sui tipi di dati ed eseguire ottimizzazioni del codice prima dell’esecuzione
+
+
+
+\subsection{Scope dinamico}
+
+\dfn{Regole di scope dinamico}{
+    Secondo le regole di scope dinamico, l'ssociazione valida per un nome \texttt{x} ad un punto \texttt{P} del programma è la più recente (in senso temporale) associazione creata per \texttt{x} ancora attiva appena il controllo di flusso arriva a \texttt{P}
+}
+In pratica occorre andare indietro \textit{nell'escecuzione} per cercare l'occerrenza d'interresse (è l'ultima che è stata introdotta) blocco attivato per ultimo (che deve essere ancora attivo), come riassunto in questa nota quindi:
+
+\nt{
+    Un nome non locale è risolto nel blocco attivato più di recente e non ancora disattivato 
+}
+
+Quando un nome non è dichiarato localmente in un blocco, viene cercato nel blocco attivato più recentemente che lo contiene.
+Questo significa che la risoluzione dei nomi segue una logica \textit{LIFO (Last In First Out)}, cioè una gestione a stack basata sull’ordine di chiamata delle funzioni. Questo approccio è più semplice da gestire a runtime perché si basa solo sulla pila di attivazione, senza necessità di altre strutture dati
+
+
+\section{determinare l'ambiente}
+
+L'ambiente è quindi determinato da:
+
+\begin{itemize}
+    \item Regole di scope (statico o dinamico)
+    \item Regole di visibilità
+    \item Regole di binding (intervengono quando una procedura P è passata come parametro ad un’altra procedura mediante il formale X )
+    \item Regole per il passaggio di parametri
+\end{itemize}
+
+% \end{document}

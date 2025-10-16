@@ -1,0 +1,85 @@
+\chapter{Strutturare il controllo - espressioni, comandi, iterazione, ricorsione}
+\section{Espressioni}
+Come al solito prima fornisco la definizione
+
+\dfn{Espressione}{
+    si definizisce \textbf{espressione} un’entità sintattica la cui valutazione produce un valore oppure non termina, nel qual caso l’espressione è indefinita
+}
+
+\subsection{sintassi delle espressioni}
+In generale, un'espressione è composta da una singola entità (costante, variabile, ecc...) o da da un operatore (\texttt{+}, \texttt{cons}, ecc...) applicato ad una serie di argomenti anch'essi espressioni. Si tenga presenta che la sintassi di un'espressione può essere descritta da una grammatica libera e può essere rappresentata da un albero di derivazione che ne esprime anche la semantica. Con Gabrielli (e non Morbidelli) verranno utilizzate le notazioni lineari per scrivere le espressioni quindi non dovrò stare qui a disegnare alberi o automi su latex grazie a dio. Queste notazioni differiscono tra loro per il modo in cui rappresentano l'applicazione (quindi la semantica) di un operatore ai suoi operanti. Possiamo distinguere tre tipi principali di notazione:
+
+\begin{itemize}
+    \item \textbf{infissa}: il simbolo dell'operatore è posto in mezzo a due espressioni, es. \texttt{a+b}.
+    
+    Sintassi ambigua, e richiede l'utilizzo di parentesi e regole di precedenza per la disambiguazione. Quasi tutti i linguaggi di programmazione insitono sulla notazione inflissa, ma spesso questa è solo uno \textit{zucchero sintattico} per rendere il codice più digeribile a chi lo legge. In C++ l'espressione \texttt{a+b} è un'abbreviazione di \texttt{a.operator+(b)}
+    \item \textbf{prefissa (polaccaa\footnote{In onore di W. Łukasiewicz, il brodo che l'ha utilizzato estensivamente})}: il simbolo dell'operatore è posto prima a due espressioni, es. \texttt{+ab}
+    
+    Intuitivamente è la sintassi delle funzioni (\texttt{f(a,b)} o \texttt{+(a,b)}) e non richede parantesi o regole di precedenza in quanto l'arietà di ogni operatore è conosciuta. Inoltre non c'è ambiguita su quale operatore applicare ad ogni operando peché è sempre quello che precede immediatamente gli operandi. es. \texttt{* + a b + c d}
+    \item \textbf{postfissa (polacca inversa)}: l'operatore è posto dopo le espressioni, es. \texttt{ab+}
+\end{itemize}
+
+Un vantaggio delle due notazioni polacche rispetto a quella infix è che possono essere utilizzate in modo uniforme per rappresentare operatori con qualsiasi numero di operandi. Nella notazione infix, invece, rappresentare operatori con più di due operandi significa dover introdurre operatori ausiliari. Un secondo vantaggio, come abbiamo già detto, è che possiamo omettere completamente le parentesi. Un ultimo vantaggio della notazione polacca è che rende particolarmente semplice la valutazione di un'espressione, che adesso vediamo
+
+\subsection{Semantica delle espressioni}
+Adesso verrà esposta la semantica delle tre notazioni lineari sintattiche prima presentate
+
+\subsubsection{notazione infissa}
+Quando utilizziamo la notazione infissa paghiamo per la semplicità di lettura con una maggiore complicazione nel meccanismo di valutazione. Ecco qui presentati i vari problemucci:
+
+\begin{itemize}
+    \item \textbf{Precedenza} fra gli operatori:
+    
+    Se le parentesi non sono utilizzate sistematicamente (o altri tipi di \textit{zucchero sintattico}) è necessario specificare la precedenza di ogni operatore. I linguaggi di programmazione, quindi, impiegano delle \textit{regole di precedenza} per definire una gerarchia tra l'ordine di valutazione e i vari operatori
+
+    Esempio:
+    \begin{lstlisting}[language=Pascal]
+        a+ b * c ** d ** e / f \\??
+        if A < B and C < D then \\?? 
+    \end{lstlisting}
+
+    Che fare prima?
+
+    \item \textbf{Associatività}: 
+    
+    Un altro problema che nella valutazione di espressioni che concerne gli operatori, se infatti noi scriviamo \texttt{15-5-3} potremmo intendere sia \texttt{(15-5)-3} o anche \texttt{15-(5-3)}. In questo caso la normale convenzione matematica impone che la prima espressione sia quella corretta e che l'operatore \texttt{-} associ da \texttt{destra a sinistra}. Non è sempre ovvio, in APL \texttt{15-5-3} è interpretato come \texttt{15-(5-3)}!!!! CAZZO
+\end{itemize}
+
+Si può quindi concludere che valutazione di un’espressione infissa non è semplice, andiamo dai polacchi vah, che è mejo
+
+\subsubsection{notazione postfissa}
+La valutazione è molto più seplice di quella inffissa:
+\begin{itemize}
+    \item non servono regole di precedenza
+    \item non servono regole di associatività
+    \item non servono le parentesi
+\end{itemize}
+
+Infatti questa notazione prevede una semplice strategia di valutazione che percorre l'espressione da sinistra a destra usando una pila per memorizzare i vari componenti. Si può quindi desceivere l'algoritmo di valutazione in questo modo:
+
+\begin{enumerate}
+    \item Leggi il prossimo simbolo nell'espressione e puschalo nella pila
+    \item Se il simbolo appena letto è un operatore applicalo agli operandi immediamente prima nello stack, memorizza il risulato in $R$, e fai il \texttt{pop} degli operatori e opeeandi dalla pila e pusha il valore in \texttt{R}
+    \item Se la sequenza da leggere non è vuota torna a (1) 
+    
+    \item Se il simbolo letto un operando torna a (1).
+\end{enumerate}
+
+\subsubsection{Valutazione prefissa}
+Un po' più complessa di quella postfissa, qui mostrato l'algoritmo:
+L'algoritmo di valutazione è descritto dai seguenti passaggi, dove utilizziamo uno stack ordinario (con le operazioni push e pop) e un contatore $C$ per memorizzare il numero di operandi richiesti dall'ultimo operatore letto:
+
+\begin{enumerate}
+    \item Leggi un simbolo dall'espressione e inseriscilo nello stack;
+    \item Se il simbolo appena letto è un operatore, inizializza il contatore $C$ con il numero di argomenti dell'operatore e vai al passaggio 1;
+    \item Se il simbolo appena letto è un operando, decrementa $C$;
+    \item Se $C \neq 0$, vai a 1;
+    \item Se $C = 0$, esegui le seguenti operazioni:
+        \begin{enumerate}[label=(\alph*)]
+            \item Applica l'ultimo operatore memorizzato nello stack agli operandi appena inseriti nello stack, memorizzando i risultati in un registro $R$, elimina operatore e operandi dallo stack e memorizza il valore di $R$ nello stack;
+            \item Se non ci sono simboli di operatore nello stack, vai a 6;
+            \item Inizializza il contatore $C$ a $n - m$, dove $n$ è il numero di argomenti dell'operatore in cima allo stack e $m$ è il numero di operandi presenti nello stack sopra questo operatore;
+            \item Vai a 4;
+        \end{enumerate}
+    \item Se la sequenza rimanente da leggere non è vuota, vai a 1;
+\end{enumerate}
