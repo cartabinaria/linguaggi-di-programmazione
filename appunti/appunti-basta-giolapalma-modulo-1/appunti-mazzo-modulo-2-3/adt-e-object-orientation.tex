@@ -1,0 +1,1418 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\bfseries\color{blue!60!black},
+  commentstyle=\itshape\color{green!40!black},
+  stringstyle=\color{red!50!black},
+  showstringspaces=false,
+  tabsize=2
+}
+
+\title{Astrazione dei Dati e Paradigma Orientato agli Oggetti}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Astrazione dei Dati}
+
+La macchina fisica manipola dati di un solo tipo fondamentale: stringhe di bit. I \textbf{tipi} di un linguaggio di alto livello organizzano questo universo indifferenziato associando ai valori una forma di incapsulamento. Un tipo può essere visto come una \textbf{capsula} che:
+\begin{itemize}
+  \item raccoglie un insieme di valori;
+  \item stabilisce quali operazioni possono manipolare tali valori;
+  \item nasconde, nei linguaggi \textit{type-safe}, la rappresentazione concreta.
+\end{itemize}
+
+Un linguaggio che offre solo array, record, puntatori e tipi ricorsivi permette di costruire strutture composte, ma non sempre consente al programmatore di definire nuovi tipi allo stesso livello di astrazione dei tipi primitivi. Il problema centrale è quindi fornire meccanismi di \textbf{data abstraction}, cioè strumenti per separare l'uso di una struttura dalla sua rappresentazione interna.
+
+\subsection{Limite dei Tipi Compositi}
+
+Una possibile implementazione di una pila di interi in uno pseudo-linguaggio è la seguente:
+
+\begin{lstlisting}
+type Int_Stack = struct{
+    int P[100];    // the stack proper
+    int top;       // first readable element
+}
+
+Int_Stack create_stack(){
+    Int_Stack s = new Int_Stack();
+    s.top = 0;
+    return s;
+}
+
+Int_Stack push(Int_Stack s, int k){
+    if (s.top == 100) error;
+    s.P[s.top] = k;
+    s.top = s.top + 1;
+    return s;
+}
+
+int top(Int_Stack s){
+    return s.P[s.top];
+}
+
+Int_Stack pop(Int_Stack s){
+    if (s.top == 0) error;
+    s.top = s.top - 1;
+    return s;
+}
+
+bool empty(Int_Stack s){
+    return (s.top == 0);
+}
+\end{lstlisting}
+
+Questa definizione suggerisce che una pila debba essere manipolata solo tramite \texttt{create\_stack}, \texttt{push}, \texttt{top}, \texttt{pop} ed \texttt{empty}. Tuttavia la rappresentazione è esposta: un client può accedere direttamente all'array interno.
+
+\begin{lstlisting}
+int second_from_top(Int_Stack s){
+    return s.P[s.top - 1];
+}
+\end{lstlisting}
+
+L'accesso diretto viola l'astrazione perché il client dipende dalla rappresentazione concreta della pila.
+
+\section{Abstract Data Types}
+
+Un \textbf{abstract data type} (\textbf{ADT}) è un meccanismo linguistico che consente di definire un nuovo tipo rendendo opaca la sua rappresentazione.
+
+\subsection{Componenti di un ADT}
+
+Un ADT comprende:
+\begin{enumerate}
+  \item un nome per il tipo astratto;
+  \item una rappresentazione concreta del tipo;
+  \item una \textbf{signature} o \textbf{interface}, cioè i nomi e i tipi delle operazioni esportate;
+  \item l'implementazione delle operazioni;
+  \item una capsula di sicurezza che separa l'interfaccia dall'implementazione.
+\end{enumerate}
+
+Formalmente, un ADT può essere rappresentato come:
+\[
+\mathcal{A} = (T_{\mathrm{abs}}, T_{\mathrm{rep}}, \Sigma, I)
+\]
+dove $T_{\mathrm{abs}}$ è il nome astratto, $T_{\mathrm{rep}}$ è il tipo di rappresentazione, $\Sigma$ è la signature pubblica e $I$ è l'implementazione privata.
+
+\subsection{Esempio: ADT per Stack di Interi}
+
+\begin{lstlisting}
+abstype Int_Stack{
+    type Int_Stack = struct{
+        int P[100];
+        int n;
+        int top;
+    }
+
+    signature
+        Int_Stack create_stack();
+        Int_Stack push(Int_Stack s, int k);
+        int top(Int_Stack s);
+        Int_Stack pop(Int_Stack s);
+        bool empty(Int_Stack s);
+
+    operations
+        Int_Stack create_stack(){
+            Int_Stack s = new Int_Stack();
+            s.n = 0;
+            s.top = 0;
+            return s;
+        }
+
+        Int_Stack push(Int_Stack s, int k){
+            if (s.n == 100) error;
+            s.n = s.n + 1;
+            s.P[s.top] = k;
+            s.top = s.top + 1;
+            return s;
+        }
+
+        int top(Int_Stack s){
+            return s.P[s.top];
+        }
+
+        Int_Stack pop(Int_Stack s){
+            if (s.n == 0) error;
+            s.n = s.n - 1;
+            s.top = s.top - 1;
+            return s;
+        }
+
+        bool empty(Int_Stack s){
+            return (s.n == 0);
+        }
+}
+\end{lstlisting}
+
+All'interno della definizione, \texttt{Int\_Stack} è sinonimo della sua rappresentazione concreta; all'esterno, invece, non esiste alcuna relazione accessibile tra il tipo astratto e il record che lo implementa. Un client non può applicare selettori di campo a un valore di tipo \texttt{Int\_Stack}.
+
+\subsection{Interfaccia e Implementazione}
+
+Un ADT è una capsula opaca:
+\begin{itemize}
+  \item all'esterno sono visibili il nome del tipo e le operazioni esportate;
+  \item all'interno sono presenti la rappresentazione e il codice delle operazioni;
+  \item ogni accesso alla rappresentazione deve passare attraverso l'interfaccia.
+\end{itemize}
+
+La \textbf{signature} è quindi il contratto sintattico dell'ADT, mentre l'implementazione è nascosta.
+
+\section{Information Hiding}
+
+Il principio di \textbf{information hiding} separa l'uso di un componente dalla sua definizione interna. Per le funzioni, tale separazione riguarda il corpo della funzione; per gli ADT riguarda sia il codice delle operazioni sia la rappresentazione dei dati.
+
+\subsection{Costruttori, Trasformatori e Osservatori}
+
+Le operazioni di un ADT $T$ si dividono concettualmente in:
+\begin{itemize}
+  \item \textbf{costruttori}: costruiscono nuovi valori di tipo $T$;
+  \item \textbf{trasformatori}: producono valori di tipo $T$ a partire da valori già esistenti;
+  \item \textbf{osservatori}: producono valori di tipi diversi da $T$ osservando valori di tipo $T$.
+\end{itemize}
+
+Se un trasformatore ha tipo:
+\[
+t : S_1 \times \cdots \times S_k \to T
+\]
+allora, per ogni tupla di argomenti $(s_1,\ldots,s_k)$, il valore $t(s_1,\ldots,s_k)$ deve essere costruibile tramite i costruttori dell'ADT.
+
+Nel caso della pila:
+\begin{itemize}
+  \item \texttt{create\_stack} e \texttt{push} sono costruttori;
+  \item \texttt{pop} è un trasformatore;
+  \item \texttt{top} ed \texttt{empty} sono osservatori.
+\end{itemize}
+
+\subsection{ADT Implementato tramite un Altro ADT}
+
+\begin{lstlisting}
+abstype Int_Var{
+    type Int_Var = Int_Stack;
+
+    signature
+        Int_Var create_var();
+        int deref(Int_Var v);
+        Int_Var assign(Int_Var v, int n);
+
+    operations
+        Int_Var create_var(){
+            return push(create_stack(), 0);
+        }
+
+        int deref(Int_Var v){
+            return top(v);
+        }
+
+        Int_Var assign(Int_Var v, int n){
+            return push(pop(v), n);
+        }
+}
+\end{lstlisting}
+
+L'implementazione di \texttt{Int\_Var} usa l'interfaccia di \texttt{Int\_Stack}, non la sua rappresentazione interna. Questo mostra che gli ADT possono essere composti mantenendo l'opacità.
+
+\section{Indipendenza dalla Rappresentazione}
+
+La \textbf{representation independence} afferma che due implementazioni corrette della stessa specifica di un ADT sono indistinguibili dai client che usano solo l'interfaccia.
+
+\subsection{Seconda Implementazione dello Stack}
+
+\begin{lstlisting}
+abstype Int_Stack{
+    type Int_Stack = struct{
+        int info;
+        Int_Stack next;
+    }
+
+    signature
+        Int_Stack create_stack();
+        Int_Stack push(Int_Stack s, int k);
+        int top(Int_Stack s);
+        Int_Stack pop(Int_Stack s);
+        bool empty(Int_Stack s);
+
+    operations
+        Int_Stack create_stack(){
+            return null;
+        }
+
+        Int_Stack push(Int_Stack s, int k){
+            Int_Stack tmp = new Int_Stack();
+            tmp.info = k;
+            tmp.next = s;
+            return tmp;
+        }
+
+        int top(Int_Stack s){
+            return s.info;
+        }
+
+        Int_Stack pop(Int_Stack s){
+            return s.next;
+        }
+
+        bool empty(Int_Stack s){
+            return (s == null);
+        }
+}
+\end{lstlisting}
+
+La rappresentazione è ora una lista concatenata, non più un array. Un client corretto, che usa soltanto la specifica astratta, non osserva differenze.
+
+\subsection{Specificazione Astratta}
+
+Una possibile specifica dell'ADT \texttt{Int\_Stack} è:
+\begin{itemize}
+  \item \texttt{create\_stack} crea una pila vuota;
+  \item \texttt{push} inserisce un elemento;
+  \item \texttt{top} restituisce l'elemento in cima senza modificare la pila;
+  \item \texttt{pop} rimuove l'elemento in cima;
+  \item \texttt{empty} è vero se e solo se la pila è vuota.
+\end{itemize}
+
+La forma forte del principio è:
+\[
+I_1 \models \mathrm{Spec}
+\land
+I_2 \models \mathrm{Spec}
+\Rightarrow
+I_1 \equiv_{\mathrm{obs}} I_2
+\]
+dove $I_1$ e $I_2$ sono implementazioni corrette della stessa specifica e $\equiv_{\mathrm{obs}}$ indica indistinguibilità osservazionale per i client.
+
+La forma debole, garantita dal type checking in linguaggi \textit{type-safe} con ADT, afferma che sostituire un'implementazione con un'altra avente la stessa signature non introduce errori di tipo.
+
+\section{Moduli}
+
+Gli ADT sono orientati alla \textbf{programmazione in piccolo}: incapsulano un tipo e le sue operazioni. I \textbf{moduli} o \textbf{package} sono invece meccanismi per la \textbf{programmazione in grande}: raccolgono più tipi, variabili e funzioni, controllando la visibilità delle dichiarazioni.
+
+\subsection{Caratteristiche Linguistiche}
+
+Un modulo:
+\begin{itemize}
+  \item ha una parte \textbf{pubblica}, visibile ai client;
+  \item ha una parte \textbf{privata}, invisibile all'esterno;
+  \item può importare altri moduli;
+  \item può esportare tipi astratti, variabili e operazioni;
+  \item può essere generico, cioè parametrico rispetto a tipi.
+\end{itemize}
+
+\subsection{Esempio di Moduli}
+
+\begin{lstlisting}
+module Buffer imports Counter{
+    public
+        type Buf;
+        void insert(reference Buf f, int n);
+        int get(Buf b);
+        Count c; // how many times buffer has been used
+
+    private imports Queue{
+        type Buf = Queue;
+
+        void insert(reference Buf b, int n){
+            inqueue(b, n);
+            inc(c);
+        }
+
+        int get(Buf b){
+            return dequeue(b);
+            inc(c);
+        }
+
+        init_counter(c); // module initialisation part
+    }
+}
+
+module Counter{
+    public
+        type Count;
+        void init_counter(reference Count c);
+        int get(Count c);
+        void inc(reference Count c);
+
+    private
+        type Count = int;
+
+        void init_counter(reference Count c){
+            c = 0;
+        }
+
+        int get(Count c){
+            return c;
+        }
+
+        void inc(reference Count c){
+            c = c + 1;
+        }
+}
+
+module Queue{
+    public
+        type Queue;
+        inqueue(reference Queue q, int n);
+        int dequeue(reference Queue q);
+        ...
+
+    private
+        void bookkeep(reference Queue q){
+            ...
+        }
+        ...
+}
+\end{lstlisting}
+
+\subsection{Moduli Generici}
+
+\begin{lstlisting}
+module Buffer<T> imports Counter{
+    public
+        type Buf;
+        void insert(reference Buf f, <T> n);
+        <T> get(Buf b);
+        Count c;
+
+    private imports Queue<T>{
+        type Buf = Queue;
+
+        void insert(reference Buf b, <T> n){
+            inqueue(b, n);
+            inc(c);
+        }
+
+        <T> get(Buf b){
+            return dequeue(b);
+            inc(c);
+        }
+    }
+}
+
+module Queue<S>{
+    public
+        type Queue;
+        inqueue(reference Queue q, <S> n);
+        <S> dequeue(reference Queue q);
+        ...
+
+    private
+        void bookkeep(reference Queue q){
+            ...
+        }
+        ...
+}
+\end{lstlisting}
+
+Un modulo generico è uno schema parametrico: il parametro di tipo viene istanziato quando il modulo è usato o collegato.
+
+\section{Limiti degli ADT}
+
+Gli ADT garantiscono \textbf{incapsulamento} e \textbf{information hiding}, ma sono rigidi quando si desidera estendere o riusare un'astrazione.
+
+\subsection{Esempio: Counter}
+
+\begin{lstlisting}
+abstype Counter{
+    type Counter = int;
+
+    signature
+        void reset(Counter x);
+        int get(Counter x);
+        void inc(Counter x);
+
+    operations
+        void reset(Counter x){
+            x = 0;
+        }
+
+        int get(Counter c){
+            return x;
+        }
+
+        void inc(Counter c){
+            x = x + 1;
+        }
+}
+\end{lstlisting}
+
+Se si vuole definire un contatore arricchito, ad esempio capace di ricordare quante volte è stato azzerato, con gli ADT tradizionali si incontrano due problemi:
+\begin{itemize}
+  \item duplicare il codice del vecchio ADT nella nuova definizione;
+  \item riusare internamente il vecchio ADT, ma senza ereditare automaticamente le sue operazioni.
+\end{itemize}
+
+Inoltre, se \texttt{Counter} e \texttt{NewCounter} sono tipi distinti, non è possibile manipolarli uniformemente in una stessa struttura dati senza una nozione di compatibilità.
+
+\subsection{Requisiti che Portano agli Oggetti}
+
+Il paradigma orientato agli oggetti nasce come risposta a quattro esigenze:
+\begin{enumerate}
+  \item incapsulare dati e operazioni;
+  \item ereditare implementazioni già definite;
+  \item definire una relazione di compatibilità basata sulle operazioni ammissibili;
+  \item selezionare dinamicamente l'operazione corretta in base al tipo effettivo dell'oggetto.
+\end{enumerate}
+
+\section{Oggetti e Classi}
+
+\subsection{Oggetti}
+
+Un \textbf{oggetto} è una capsula che contiene:
+\begin{itemize}
+  \item dati, detti \textbf{instance variables}, \textbf{fields} o \textbf{data members};
+  \item operazioni, dette \textbf{methods} o \textbf{member functions};
+  \item un'interfaccia visibile all'esterno.
+\end{itemize}
+
+L'esecuzione di un metodo avviene tramite invio di un messaggio:
+
+\begin{lstlisting}
+object.method(parameters)
+\end{lstlisting}
+
+L'oggetto ricevente è un parametro implicito del metodo. Per esempio, \texttt{o.inc()} significa che l'oggetto \texttt{o} riceve il messaggio \texttt{inc}.
+
+\subsection{Classi}
+
+Una \textbf{classe} è un modello per un insieme di oggetti. Stabilisce:
+\begin{itemize}
+  \item i campi degli oggetti;
+  \item la visibilità dei campi;
+  \item i metodi disponibili;
+  \item la signature, la visibilità e l'implementazione dei metodi.
+\end{itemize}
+
+\begin{lstlisting}
+class Counter{
+    private int x;
+
+    public void reset(){
+        x = 0;
+    }
+
+    public int get(){
+        return x;
+    }
+
+    public void inc(){
+        x = x + 1;
+    }
+}
+\end{lstlisting}
+
+La creazione dinamica di un oggetto avviene per istanziazione della classe:
+
+\begin{lstlisting}
+Counter c = new Counter();
+Counter d = new Counter();
+\end{lstlisting}
+
+Gli oggetti \texttt{c} e \texttt{d} hanno la stessa struttura, ma campi distinti. Il codice dei metodi può essere memorizzato una sola volta nella classe.
+
+\subsection{Il Riferimento \texttt{this}}
+
+Durante l'esecuzione di un metodo, l'oggetto corrente è accessibile tramite un riferimento implicito, spesso chiamato \texttt{this} o \texttt{self}.
+
+\begin{lstlisting}
+public void inc(){
+    this.x = this.x + 1;
+}
+\end{lstlisting}
+
+Le variabili locali sono accedute tramite il record di attivazione; i campi dell'oggetto sono acceduti tramite offset rispetto a \texttt{this}.
+
+\subsection{Classi Statiche e Membri Statici}
+
+Alcuni linguaggi permettono campi e metodi associati alla classe, non alle singole istanze. Essi sono detti \textbf{static} o \textbf{class members}. Un metodo statico non può riferirsi a \texttt{this}, perché non ha un oggetto corrente.
+
+\section{Incapsulamento negli Oggetti}
+
+Ogni classe presenta almeno due viste:
+\begin{itemize}
+  \item una vista \textbf{private}, completa, disponibile all'interno della classe;
+  \item una vista \textbf{public}, limitata, disponibile ai client.
+\end{itemize}
+
+La parte pubblica è l'\textbf{interfaccia} della classe. L'incapsulamento degli oggetti è simile a quello degli ADT, ma diventa più flessibile grazie a sottotipi, ereditarietà e dispatch dinamico.
+
+\section{Sottotipi}
+
+In un linguaggio tipato con classi, la definizione di una classe introduce anche un tipo: i suoi valori sono le istanze della classe.
+
+\subsection{Definizione Funzionale di Sottotipo}
+
+Un tipo $T$ è sottotipo di un tipo $S$, scritto:
+\[
+T <: S
+\]
+se ogni messaggio compreso dagli oggetti di tipo $S$ è compreso anche dagli oggetti di tipo $T$.
+
+In termini di interfacce:
+\[
+T <: S \quad \Longleftrightarrow \quad \mathrm{Interface}(S) \subseteq \mathrm{Interface}(T).
+\]
+
+Il verso dell'inclusione è importante: un sottotipo ha un'interfaccia più grande o uguale.
+
+\subsection{Subclasses}
+
+Nei linguaggi con equivalenza per nome, la relazione di sottotipo deve spesso essere dichiarata esplicitamente tramite una relazione di \textbf{subclassing}.
+
+\begin{lstlisting}
+class NamedCounter extending Counter{
+    private String name;
+
+    public void set_name(String n){
+        name = n;
+    }
+
+    public String get_name(){
+        return name;
+    }
+}
+\end{lstlisting}
+
+\texttt{NamedCounter} è sottoclasse di \texttt{Counter}; quindi il tipo \texttt{NamedCounter} è sottotipo di \texttt{Counter}.
+
+\section{Ereditarietà}
+
+L'\textbf{ereditarietà} è il meccanismo che permette a una classe di riusare campi e metodi definiti in una superclasse. Deve essere distinta dalla relazione di sottotipo: spesso coincidono, ma concettualmente sono diverse.
+
+\subsection{Overriding}
+
+Una sottoclasse può ridefinire l'implementazione di un metodo ereditato. Questo meccanismo è detto \textbf{overriding}.
+
+\begin{lstlisting}
+class NewCounter extending Counter{
+    private int num_reset = 0;
+
+    public void reset(){
+        x = 0;
+        num_reset = num_reset + 1;
+    }
+
+    public int howmany_resets(){
+        return num_reset;
+    }
+}
+\end{lstlisting}
+
+Un messaggio \texttt{reset} inviato a un'istanza di \texttt{NewCounter} esegue la nuova implementazione.
+
+\subsection{Shadowing}
+
+Lo \textbf{shadowing} avviene quando una sottoclasse ridefinisce un campo già presente nella superclasse. A differenza dell'overriding dei metodi, lo shadowing è un meccanismo statico.
+
+\begin{lstlisting}
+class EvenNewCounter extending NewCounter{
+    private int num_reset = 2;
+
+    public void reset(){
+        x = 0;
+        num_reset = num_reset + 2;
+    }
+
+    public int howmany_resets(){
+        return num_reset;
+    }
+}
+\end{lstlisting}
+
+I riferimenti a \texttt{num\_reset} dentro \texttt{EvenNewCounter} indicano il campo locale della sottoclasse, non quello della superclasse.
+
+\subsection{Visibilità Protetta}
+
+Molti linguaggi introducono una visibilità \textbf{protected}: un campo o metodo è invisibile ai client generici, ma visibile nelle sottoclassi. Questo rende più efficiente il riuso, ma aumenta l'accoppiamento tra superclasse e sottoclasse.
+
+\subsection{Ereditarietà Singola e Multipla}
+
+Con \textbf{ereditarietà singola}, ogni classe ha al massimo una superclasse immediata; la gerarchia è un albero. Con \textbf{ereditarietà multipla}, una classe può ereditare da più superclassi; la gerarchia diventa un grafo aciclico orientato.
+
+L'ereditarietà multipla introduce conflitti di nomi:
+
+\begin{lstlisting}
+class A{
+    int x;
+    int f(){
+        return x;
+    }
+}
+
+class B{
+    int y;
+    int f(){
+        return y;
+    }
+}
+
+class C extending A,B{
+    int h(){
+        return f();
+    }
+}
+\end{lstlisting}
+
+Il riferimento a \texttt{f} in \texttt{C} è ambiguo. Le soluzioni possibili sono:
+\begin{enumerate}
+  \item proibire sintatticamente i conflitti;
+  \item richiedere qualificazione esplicita, ad esempio \texttt{A::f()} o \texttt{B::f()};
+  \item adottare una convenzione arbitraria di risoluzione.
+\end{enumerate}
+
+\subsection{Diamond Problem}
+
+Il \textbf{diamond problem} nasce quando una classe eredita da due superclassi che condividono una superclasse comune.
+
+\begin{lstlisting}
+class Top{
+    int w;
+    int f(){
+        return w;
+    }
+}
+
+class A extending Top{
+    int x;
+    int g(){
+        return w + x;
+    }
+}
+
+class B extending Top{
+    int y;
+    int f(){
+        return w + y;
+    }
+    int k(){
+        return y;
+    }
+}
+
+class Bottom extending A,B{
+    int z;
+    int h(){
+        return z;
+    }
+}
+\end{lstlisting}
+
+Il problema è stabilire se \texttt{Bottom} debba contenere una o due copie della parte ereditata da \texttt{Top}.
+
+\section{Dynamic Method Lookup}
+
+Il \textbf{dynamic method lookup}, o \textbf{dynamic dispatch}, è il cuore del paradigma orientato agli oggetti. Quando un metodo $m$ è invocato su un oggetto $o$:
+\[
+o.m(\mathrm{parameters})
+\]
+l'implementazione selezionata dipende dal \textbf{tipo dinamico} dell'oggetto ricevente, non dal tipo statico del riferimento.
+
+\subsection{Esempio di Dispatch Dinamico}
+
+\begin{lstlisting}
+class Counter{
+    private int x;
+
+    public void reset(){
+        x = 0;
+    }
+
+    public int get(){
+        return x;
+    }
+
+    public void inc(){
+        x = x + 1;
+    }
+}
+
+class NewCounter extending Counter{
+    private int num_reset = 0;
+
+    public void reset(){
+        x = 0;
+        num_reset = num_reset + 1;
+    }
+
+    public int howmany_resets(){
+        return num_reset;
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+NewCounter n = new NewCounter();
+Counter c;
+c = n;
+c.reset();
+\end{lstlisting}
+
+Il tipo statico di \texttt{c} è \texttt{Counter}, ma il suo valore dinamico è un'istanza di \texttt{NewCounter}. La chiamata \texttt{c.reset()} invoca quindi il metodo \texttt{reset} ridefinito in \texttt{NewCounter}.
+
+\subsection{Uniformità sui Sottotipi}
+
+\begin{lstlisting}
+Counter V[100];
+
+for (int i = 1; i < 100; i = i + 1)
+    V[i].reset();
+\end{lstlisting}
+
+Ogni elemento dell'array può avere un tipo dinamico diverso, purché sottotipo di \texttt{Counter}. Il dispatch dinamico garantisce che venga eseguito il metodo corretto.
+
+\subsection{Late Binding of Self}
+
+Il riferimento \texttt{this} è legato dinamicamente all'oggetto corrente. Questo produce il cosiddetto \textbf{late binding of self}.
+
+\begin{lstlisting}
+class A{
+    int a = 0;
+    void f(){ g(); }
+    void g(){ a = 1; }
+}
+
+class B extending A{
+    int b = 0;
+    void g(){ b = 2; }
+}
+\end{lstlisting}
+
+Se un'istanza di \texttt{B} invoca \texttt{f}, il corpo ereditato da \texttt{A} chiama implicitamente \texttt{this.g()}; poiché \texttt{this} è l'oggetto di tipo dinamico \texttt{B}, viene invocato \texttt{B.g}.
+
+\subsection{Overriding e Shadowing}
+
+\begin{lstlisting}
+class A{
+    int a = 1;
+    int f(){ return -a; }
+}
+
+class B extending A{
+    int a = 2;
+    int f(){ return a; }
+}
+
+B obj_b = new B();
+print(obj_b.f());
+print(obj_b.a);
+
+A obj_a = obj_b;
+print(obj_a.f());
+print(obj_a.a);
+\end{lstlisting}
+
+Le chiamate di metodo usano dispatch dinamico; l'accesso ai campi usa invece il tipo statico del riferimento. Perciò l'overriding è dinamico, mentre lo shadowing dei campi è statico.
+
+\section{Implementazione degli Oggetti}
+
+\subsection{Rappresentazione degli Oggetti}
+
+Un oggetto può essere rappresentato come un record che contiene:
+\begin{itemize}
+  \item i campi definiti dalla sua classe;
+  \item i campi ereditati dalle superclassi;
+  \item eventuali campi omonimi introdotti per shadowing;
+  \item un puntatore al descrittore della classe.
+\end{itemize}
+
+Se un oggetto di classe $B$ è visto tramite un riferimento statico a una superclasse $A$, il type checking garantisce che siano accessibili solo campi e metodi presenti nell'interfaccia di $A$.
+
+\subsection{Metodo e Parametro \texttt{this}}
+
+Un metodo è eseguito in modo simile a una funzione: viene creato un record di attivazione per parametri, variabili locali e informazioni di controllo. In più, viene passato un puntatore all'oggetto ricevente, cioè \texttt{this}. L'accesso a un campo avviene tramite:
+\[
+\mathrm{address}(\mathrm{field}) =
+\mathrm{this} + \mathrm{offset}(\mathrm{field}).
+\]
+
+\subsection{Vtable per Ereditarietà Singola}
+
+In un linguaggio con tipi statici, il dispatch dinamico può essere implementato tramite una \textbf{vtable} (\textit{virtual function table}). Ogni classe ha una tabella contenente i puntatori ai metodi disponibili. La vtable di una sottoclasse:
+\begin{itemize}
+  \item copia la vtable della superclasse;
+  \item sostituisce i metodi ridefiniti;
+  \item aggiunge in fondo i nuovi metodi.
+\end{itemize}
+
+Se il metodo \texttt{f} è l'$n$-esimo elemento della vtable e ogni indirizzo occupa $w$ byte, una chiamata dinamica può essere schematizzata così:
+
+\begin{lstlisting}
+R1 := pa                         // access the object
+R2 := *(R1)                      // vtable
+R3 := *(R2 + (n - 1) * w)        // indirect to f
+call *(R3)                       // call f
+\end{lstlisting}
+
+Il costo è costante: due indirezioni più la chiamata.
+
+\subsection{Downcasting}
+
+Il \textbf{downcasting} specializza staticamente un riferimento seguendo la gerarchia dei sottotipi in direzione opposta.
+
+\begin{lstlisting}
+Object clone(){...}
+\end{lstlisting}
+
+\begin{lstlisting}
+A a = (A) o.clone();
+\end{lstlisting}
+
+La macchina astratta deve verificare a runtime che il tipo dinamico dell'oggetto sia effettivamente compatibile con \texttt{A}; altrimenti si produce un errore dinamico di tipo.
+
+\subsection{Fragile Base Class Problem}
+
+Il \textbf{fragile base class problem} si verifica quando una modifica apparentemente innocua a una superclasse rompe il comportamento o l'interfaccia binaria delle sottoclassi già compilate.
+
+\begin{lstlisting}
+class Upper{
+    int x;
+    int f(){...}
+}
+
+class Lower extending Upper{
+    int y;
+    int g(){ return y + f(); }
+}
+\end{lstlisting}
+
+Se la superclasse viene modificata:
+
+\begin{lstlisting}
+class Upper{
+    int x;
+    int h(){ return x; }
+    int f(){...}
+}
+\end{lstlisting}
+
+gli offset dei metodi nella vtable possono cambiare. Una sottoclasse compilata in precedenza può quindi accedere al metodo sbagliato, a meno di ricompilazione o risoluzione dinamica degli offset.
+
+\subsection{Dispatch nella JVM}
+
+La Java Virtual Machine usa un meccanismo basato su \textbf{constant pool}, caricamento dinamico delle classi e risoluzione lazy dei nomi. Una chiamata virtuale può inizialmente essere rappresentata come:
+
+\begin{lstlisting}
+invokevirtual index
+\end{lstlisting}
+
+Alla prima esecuzione, la JVM risolve il nome, controlla visibilità e tipi, calcola l'offset nella tabella dei metodi e può riscrivere l'istruzione in forma ottimizzata:
+
+\begin{lstlisting}
+invokevirtual_quick d np
+\end{lstlisting}
+
+Per i metodi di interfaccia, l'offset può variare tra classi diverse che implementano la stessa interfaccia:
+
+\begin{lstlisting}
+interface Interface{
+    void foo();
+}
+
+public class A implements Interface{
+    int x;
+    void foo(){...}
+}
+
+public class B implements Interface{
+    int y;
+    int fie(){...}
+    int foo(){...}
+}
+\end{lstlisting}
+
+La JVM deve mantenere anche informazioni sul nome e sulla signature del metodo:
+
+\begin{lstlisting}
+invokeinterface_quick name_of_foo, d
+\end{lstlisting}
+
+\section{Implementazione dell'Ereditarietà Multipla}
+
+\subsection{Struttura delle Vtable}
+
+\begin{lstlisting}
+class A{
+    int x;
+    int f(){
+        return x;
+    }
+}
+
+class B{
+    int y;
+    int g(){
+        return y;
+    }
+    int h(){
+        return 2 * y;
+    }
+}
+
+class C extending A,B{
+    int z;
+    int g(){
+        return x + y + z;
+    }
+    int k(){
+        return z;
+    }
+}
+\end{lstlisting}
+
+In presenza di ereditarietà multipla, un oggetto può avere più viste statiche. Una istanza di \texttt{C} deve poter essere vista come \texttt{A}, come \texttt{B} e come \texttt{C}. La rappresentazione contiene più sezioni e, spesso, più puntatori a vtable.
+
+Una chiamata a un metodo ereditato dalla seconda superclasse richiede una correzione del puntatore \texttt{this}. Se \texttt{h} è l'$n$-esimo metodo nella vtable di \texttt{B}, uno schema possibile è:
+
+\begin{lstlisting}
+R1 := pa                              // view A
+R1 := R1 + d                          // view B
+R2 := *(R1)                           // vtable for B
+R3 := *(R2 + (n - 1) * 2 * w)         // address of h
+R2 := *(R2 + (n - 1) * 2 * w + w)     // correction
+this := R1 + R2
+call *(R3)                            // call h
+\end{lstlisting}
+
+\subsection{Ereditarietà Multipla Replicata}
+
+Nell'ereditarietà multipla \textbf{replicata}, una classe in fondo al diamante contiene copie distinte della superclasse comune. Questo semplifica l'implementazione, ma rende ambigui accessi e conversioni verso la superclasse condivisa.
+
+\subsection{Ereditarietà Multipla Condivisa}
+
+Nell'ereditarietà multipla \textbf{condivisa}, la classe in fondo al diamante contiene una sola copia della superclasse comune. In C\texttt{++}, questo comportamento è ottenuto tramite \textbf{virtual base classes}.
+
+L'accesso alla parte condivisa richiede un'indirezione aggiuntiva:
+
+\begin{lstlisting}
+R1 := pa                              // view Bottom
+R1 := *(R1 + w)                       // view Top
+R2 := *(R1)                           // vtable for Top
+R3 := *(R2 + (n - 1) * 2 * w)         // address of f
+R2 := *(R2 + (n - 1) * 2 * w + w)     // correction
+this := R1 + R2
+call *(R3)
+\end{lstlisting}
+
+\section{Polimorfismo per Sottotipo}
+
+Il \textbf{polimorfismo per sottotipo} è una forma di polimorfismo universale limitata ai sottotipi di un tipo dato. Se un metodo ha forma:
+
+\begin{lstlisting}
+B foo(A x){...}
+\end{lstlisting}
+
+allora può ricevere un valore di qualunque sottotipo di \texttt{A}. In notazione formale:
+\[
+\forall T <: A.\ T \to B.
+\]
+
+\subsection{Identità e Limiti del Type System}
+
+\begin{lstlisting}
+A Ide(A x){
+    return x;
+}
+\end{lstlisting}
+
+Semanticamente, il tipo più preciso sarebbe:
+\[
+\forall T <: A.\ T \to T.
+\]
+
+Tuttavia molti linguaggi non sono in grado di esprimere staticamente che il tipo del risultato dipende dal tipo dell'argomento. Perciò può essere necessario un cast:
+
+\begin{lstlisting}
+C cc = (C) Ide(c);
+\end{lstlisting}
+
+\subsection{Stack Basato su \texttt{Object}}
+
+\begin{lstlisting}
+class Elem{
+    Object info;
+    Elem prox;
+}
+
+class Stack{
+    private Elem top = null; // empty stack
+
+    boolean isEmpty(){
+        return top == null;
+    }
+
+    void push(Object o){
+        Elem ne = new Elem();
+        ne.info = o;
+        ne.prox = top;
+        top = ne;
+    }
+
+    Object pop(){
+        Object tmp = top.info;
+        top = top.prox;
+        return tmp;
+    }
+}
+\end{lstlisting}
+
+Poiché \texttt{pop} restituisce \texttt{Object}, l'uso specifico richiede un cast dinamico:
+
+\begin{lstlisting}
+C c;
+Stack s = new Stack();
+s.push(new C());
+c = (C) s.pop(); // dynamic check
+\end{lstlisting}
+
+\section{Generics in Java}
+
+I \textbf{generics} introducono polimorfismo parametrico esplicito in Java. Classi, interfacce e metodi possono avere parametri di tipo.
+
+\subsection{Stack Generico}
+
+\begin{lstlisting}
+class Elem<A>{
+    A info;
+    Elem<A> prox;
+}
+
+class Stack<A>{
+    private Elem<A> top = null; // empty stack
+
+    boolean isEmpty(){
+        return top == null;
+    }
+
+    void push(A o){
+        Elem<A> ne = new Elem<A>();
+        ne.info = o;
+        ne.prox = top;
+        top = ne;
+    }
+
+    A pop(){
+        A tmp = top.info;
+        top = top.prox;
+        return tmp;
+    }
+}
+\end{lstlisting}
+
+L'uso diventa type-safe senza cast espliciti:
+
+\begin{lstlisting}
+Stack<String> ss = new Stack<String>();
+ss.push(new String("pippo"));
+String s = ss.pop();
+\end{lstlisting}
+
+\subsection{Coppie Generiche}
+
+\begin{lstlisting}
+class Pair<A,B>{
+    private A a;
+    private B b;
+
+    Pair(A x, B y){
+        a = x;
+        b = y;
+    }
+
+    A First(){
+        return a;
+    }
+
+    B Second(){
+        return b;
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+Integer i = new Integer(3);
+String v = new String("pippo");
+Pair<Integer,String> c = new Pair<Integer,String>(3, v);
+String w = c.Second();
+\end{lstlisting}
+
+\subsection{Metodi Generici}
+
+\begin{lstlisting}
+Pair<Object,Object> diagonal(Object x){
+    return new Pair<Object,Object>(x, x);
+}
+\end{lstlisting}
+
+Questa versione perde informazione sul tipo specifico dell'argomento. Una versione generica mantiene la relazione tra argomento e risultato:
+
+\begin{lstlisting}
+<T> Pair<T,T> diagonal(T x){
+    return new Pair<T,T>(x, x);
+}
+\end{lstlisting}
+
+Formalmente:
+\[
+\forall T.\ T \to Pair<T,T>.
+\]
+
+Esempi di inferenza del parametro:
+
+\begin{lstlisting}
+Pair<Integer,Integer> ci = diagonal(new Integer(4));
+Pair<String,String> cs = diagonal(new String("pippo"));
+\end{lstlisting}
+
+\subsection{Bounded Generics}
+
+Un parametro di tipo può essere vincolato a un sottotipo:
+
+\begin{lstlisting}
+interface Shape{
+    void draw();
+}
+
+class Circle implements Shape{
+    public void draw(){...}
+}
+
+class Rhombus implements Shape{
+    public void draw(){...}
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+<T extends Shape> void drawAll(List<T> forms){
+    for(Shape f : forms)
+        f.draw();
+}
+\end{lstlisting}
+
+Il tipo formale è:
+\[
+\forall T <: Shape.\ List<T> \to void.
+\]
+
+Il metodo accetta liste di elementi appartenenti a qualunque sottotipo di \texttt{Shape}.
+
+\subsection{F-Bounded Polymorphism}
+
+Un parametro di tipo può comparire nel proprio vincolo. Questo schema è detto \textbf{F-bounded polymorphism}.
+
+\begin{lstlisting}
+public static <T extends Comparable<T>>
+T max(List<T> list)
+\end{lstlisting}
+
+Questa firma richiede che $T$ sia confrontabile con valori dello stesso tipo. Una forma più flessibile consente il confronto con supertipi di $T$:
+
+\begin{lstlisting}
+public static <T extends Comparable<? super T>>
+T max(List<T> list)
+\end{lstlisting}
+
+\subsection{Wildcard}
+
+Il carattere \texttt{?} indica un tipo sconosciuto. \texttt{List<?>} è un supertipo comune di tutte le liste \texttt{List<A>}.
+
+\begin{lstlisting}
+void drawAll(List<? extends Shape> forms){
+    for(Shape f : forms)
+        f.draw();
+}
+\end{lstlisting}
+
+Una wildcard è utile quando il parametro di tipo compare una sola volta. Se compare più volte, un parametro esplicito rende il vincolo più chiaro.
+
+\subsection{Implementazione dei Generics in Java}
+
+Java implementa i generics tramite \textbf{erasure}. Dopo il controllo statico:
+\begin{itemize}
+  \item le informazioni tra parentesi angolari sono rimosse;
+  \item le variabili di tipo sono sostituite dal loro upper bound, spesso \texttt{Object};
+  \item il compilatore inserisce cast dinamici dove necessario.
+\end{itemize}
+
+Conseguenze:
+\begin{itemize}
+  \item la JVM non deve essere modificata;
+  \item codice generico e non generico possono coesistere;
+  \item eventuali buchi locali nel sistema statico sono intercettati a runtime dai cast inseriti.
+\end{itemize}
+
+\section{Generics, Array e Gerarchia dei Sottotipi}
+
+In Java, i generics non preservano la gerarchia dei sottotipi:
+\[
+A <: B \quad \nRightarrow \quad \mathrm{Stack}\langle A\rangle <: \mathrm{Stack}\langle B\rangle.
+\]
+
+\subsection{Perché i Generics non sono Covarianti}
+
+\begin{lstlisting}
+Stack<Integer> si = new Stack<Integer>();
+Stack<Object> so = si; // Incorrect in Java
+\end{lstlisting}
+
+Se la seconda riga fosse ammessa, si potrebbe scrivere:
+
+\begin{lstlisting}
+so.push(new String("pluto"));
+Integer i = si.pop(); // danger!
+\end{lstlisting}
+
+Il risultato sarebbe una violazione della sicurezza dei tipi: una stringa verrebbe estratta da una pila che staticamente promette interi.
+
+\subsection{Array Covarianti}
+
+Gli array Java sono invece covarianti:
+\[
+A <: B \Rightarrow A[] <: B[].
+\]
+
+\begin{lstlisting}
+Integer[] ai = new Integer[10];
+Object[] ao = ai;              // correct: Integer[] <: Object[]
+ao[0] = new String("pluto");   // correct statically; runtime error
+\end{lstlisting}
+
+La sicurezza è mantenuta tramite controlli dinamici sugli aggiornamenti dell'array.
+
+\subsection{Covarianza e Contravarianza}
+
+Sia $(D,\leq)$ un insieme preordinato. Una funzione $f : D \to D$ è:
+\begin{itemize}
+  \item \textbf{covariante} se $x \leq y \Rightarrow f(x) \leq f(y)$;
+  \item \textbf{contravariante} se $x \leq y \Rightarrow f(x) \geq f(y)$.
+\end{itemize}
+
+Nel contesto dei tipi, la terminologia descrive come un costruttore di tipo preserva o inverte la relazione di sottotipo.
+
+\section{Overriding Covariante e Contravariante}
+
+\subsection{Tipo del Risultato}
+
+Supponiamo una classe:
+
+\begin{lstlisting}
+class F{
+    C fie(A p){...}
+}
+\end{lstlisting}
+
+Se $D <: C$, una sottoclasse può ridefinire il metodo con risultato più specifico:
+
+\begin{lstlisting}
+class E extending F{
+    D fie(A p){...}
+}
+\end{lstlisting}
+
+La ridefinizione è corretta perché ogni valore di tipo $D$ è anche un valore di tipo $C$. Quindi l'overriding è \textbf{covariante} nel tipo del risultato.
+
+\subsection{Tipo degli Argomenti}
+
+Per gli argomenti, la regola semanticamente corretta è opposta. Un metodo:
+\[
+S \to T
+\]
+è sottotipo di:
+\[
+S' \to T'
+\]
+quando:
+\[
+S' <: S
+\qquad \text{e} \qquad
+T <: T'.
+\]
+
+La funzione è quindi \textbf{contravariante} negli argomenti e \textbf{covariante} nel risultato.
+
+\subsection{Binary Methods}
+
+La contravarianza degli argomenti è spesso controintuitiva nei \textbf{binary methods}, cioè metodi che ricevono un parametro dello stesso tipo dell'oggetto ricevente.
+
+\begin{lstlisting}
+class Point{
+    boolean eq(Point p){...}
+}
+
+class ColoredPoint extending Point{
+    boolean eq(ColoredPoint p){...}
+}
+\end{lstlisting}
+
+Secondo la regola contravariante, \texttt{ColoredPoint.eq} non è una ridefinizione type-safe di \texttt{Point.eq}, perché restringe il tipo dell'argomento invece di allargarlo. Per questo molti linguaggi, come Java e C\texttt{++}, richiedono identità dei tipi degli argomenti nei metodi ridefiniti.
+
+\section{Linguaggi Basati su Delegation}
+
+Non tutti i linguaggi orientati agli oggetti sono basati su classi. Nei linguaggi a \textbf{delegation} o \textbf{prototype-based}, un oggetto può delegare a un altro oggetto, detto \textbf{parent}, l'esecuzione di un metodo che non possiede.
+
+Un oggetto può essere creato clonando un \textbf{prototype}. Se riceve un messaggio che non comprende, lo inoltra al parent. Il riferimento a \texttt{self} resta legato all'oggetto originario che ha ricevuto il messaggio.
+
+Questo modello rende più flessibile l'ereditarietà: un oggetto può cambiare dinamicamente il proprio parent e quindi il proprio comportamento.
+
+\section{Sintesi Concettuale}
+
+\subsection{Astrazione dei Dati}
+
+L'astrazione dei dati si fonda su:
+\begin{itemize}
+  \item separazione tra interfaccia e implementazione;
+  \item opacità della rappresentazione;
+  \item specificazione del comportamento osservabile;
+  \item indipendenza dalla rappresentazione;
+  \item modularizzazione per sistemi grandi.
+\end{itemize}
+
+\subsection{Paradigma Orientato agli Oggetti}
+
+Il paradigma orientato agli oggetti combina quattro meccanismi:
+\begin{itemize}
+  \item \textbf{incapsulamento} dei dati;
+  \item \textbf{sottotipi} come relazione di compatibilità;
+  \item \textbf{ereditarietà} come riuso di implementazione;
+  \item \textbf{dynamic dispatch} come selezione runtime dei metodi.
+\end{itemize}
+
+\subsection{Confronto Finale}
+
+\begin{center}
+\begin{tabular}{|p{3.3cm}|p{5.2cm}|p{5.2cm}|}
+\hline
+\textbf{Meccanismo} & \textbf{Idea centrale} & \textbf{Limite o costo} \\
+\hline
+ADT & Incapsula un tipo e le sue operazioni & Poco flessibile nell'estensione \\
+\hline
+Modulo & Incapsula più dichiarazioni e controlla la visibilità & Dipende spesso da meccanismi di compilazione separata \\
+\hline
+Classe & Modello per oggetti con campi e metodi & Introduce complessità di dispatch e rappresentazione \\
+\hline
+Sottotipo & Compatibilità basata sull'interfaccia & Può divergere dall'ereditarietà \\
+\hline
+Ereditarietà & Riuso di implementazione & Fragile base class e conflitti multipli \\
+\hline
+Dynamic dispatch & Selezione runtime del metodo & Richiede supporto nella macchina astratta \\
+\hline
+Generics & Polimorfismo parametrico esplicito & Interazione delicata con sottotipi e array \\
+\hline
+\end{tabular}
+\end{center}
+
+La traiettoria concettuale è chiara: dagli ADT, che proteggono una rappresentazione dietro una signature, si arriva agli oggetti, che rendono l'astrazione estensibile tramite sottotipi, ereditarietà e dispatch dinamico.
+
+\end{document}

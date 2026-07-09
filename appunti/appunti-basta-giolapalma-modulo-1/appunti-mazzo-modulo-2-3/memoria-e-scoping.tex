@@ -1,0 +1,453 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\bfseries\color{blue!60!black},
+  commentstyle=\itshape\color{green!40!black},
+  stringstyle=\color{red!50!black},
+  showstringspaces=false,
+  tabsize=2
+}
+
+\title{Gestione della Memoria nei Linguaggi di Programmazione}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Ruolo della Gestione della Memoria}
+
+La \textbf{gestione della memoria} e una componente essenziale dell'interprete di una macchina astratta. Essa stabilisce:
+
+\begin{itemize}
+  \item come programmi e dati vengono disposti in memoria;
+  \item per quanto tempo tali oggetti restano allocati;
+  \item quali strutture ausiliarie sono necessarie per accedere correttamente alle informazioni.
+\end{itemize}
+
+Nelle macchine astratte di basso livello la gestione puo essere interamente \textbf{statica}: codice macchina e dati sono caricati prima dell'esecuzione e restano in memoria fino alla terminazione del programma.
+
+Nei linguaggi di alto livello, invece, la presenza di \textbf{ricorsione}, blocchi annidati, procedure, funzioni e allocazione esplicita richiede tecniche piu articolate: \textbf{gestione statica}, \textbf{stack di attivazione} e \textbf{heap}.
+
+\section{Gestione Statica della Memoria}
+
+La \textbf{gestione statica} e effettuata dal compilatore prima dell'inizio dell'esecuzione. Un oggetto allocato staticamente:
+
+\begin{itemize}
+  \item risiede in una zona di memoria fissata dal compilatore;
+  \item permane per tutta la durata dell'esecuzione del programma;
+  \item ha una dimensione e una posizione note a tempo di compilazione.
+\end{itemize}
+
+Sono tipicamente gestibili staticamente:
+
+\begin{itemize}
+  \item variabili globali;
+  \item codice oggetto;
+  \item costanti il cui valore non dipende da informazioni note solo a runtime;
+  \item tabelle generate dal compilatore, ad esempio per nomi, tipi o supporto runtime.
+\end{itemize}
+
+In assenza di ricorsione, anche le informazioni locali a una procedura possono essere allocate staticamente, poiche non possono esistere due attivazioni simultanee della stessa procedura.
+
+\section{Perche Serve la Gestione Dinamica}
+
+Se un linguaggio ammette la \textbf{ricorsione}, il numero massimo di procedure attive non e, in generale, determinabile staticamente. Esso puo dipendere dai valori degli argomenti o da informazioni disponibili solo durante l'esecuzione.
+
+\subsection{Esempio: Fibonacci Ricorsivo}
+
+\begin{lstlisting}[language=C]
+int fib (int n) {
+    if (n == 0) return 1;
+    else if (n == 1) return 1;
+    else return fib(n-1) + fib(n-2);
+}
+\end{lstlisting}
+
+La sequenza di Fibonacci e definita da:
+\[
+Fib(0)=Fib(1)=1,
+\qquad
+Fib(n)=Fib(n-1)+Fib(n-2) \quad \text{per } n>1.
+\]
+
+Il numero di chiamate necessarie per calcolare \texttt{fib(n)} soddisfa:
+\[
+C(0)=C(1)=1,
+\qquad
+C(n)=C(n-1)+C(n-2) \quad \text{per } n>1.
+\]
+
+Poiche i numeri di Fibonacci crescono esponenzialmente, il numero di chiamate e dell'ordine di:
+\[
+O(2^n).
+\]
+
+Ogni chiamata richiede spazio per parametri, variabili locali, risultati intermedi, indirizzo di ritorno e informazioni di controllo. La memoria deve dunque essere allocata e deallocata dinamicamente.
+
+\section{Gestione Dinamica mediante Stack}
+
+Blocchi e procedure seguono naturalmente una disciplina \textbf{LIFO} (\textit{Last In, First Out}): l'ultimo blocco entrato o l'ultima procedura chiamata e il primo a terminare.
+
+Per questo motivo, le attivazioni vengono gestite tramite uno \textbf{stack runtime} o \textbf{system stack}.
+
+\subsection{Esempio di Blocchi Annidati}
+
+\begin{lstlisting}
+A: {
+    int a = 1;
+    int b = 0;
+
+    B: {
+        int c = 3;
+        int b = 3;
+    }
+
+    b = a + 1;
+}
+\end{lstlisting}
+
+Quando si entra nel blocco \texttt{A}, viene allocato sullo stack uno spazio per \texttt{a} e \texttt{b}. Entrando in \texttt{B}, viene allocato un nuovo spazio per \texttt{c} e per il nuovo \texttt{b}, distinto da quello esterno. All'uscita da \texttt{B}, il relativo spazio viene rimosso con una \textit{pop}; lo stesso accade poi per \texttt{A}.
+
+\subsection{Record di Attivazione}
+
+Lo spazio di memoria associato a un'attivazione di blocco o procedura e detto \textbf{record di attivazione} o \textbf{frame}.
+
+Un record di attivazione e associato a una specifica attivazione, non alla semplice dichiarazione della procedura. Due chiamate diverse della stessa procedura producono due record distinti.
+
+\subsection{Record di Attivazione per Blocchi Inline}
+
+Un record di attivazione per un blocco inline contiene tipicamente:
+
+\begin{itemize}
+  \item \textbf{risultati intermedi}, prodotti durante la valutazione di espressioni;
+  \item \textbf{variabili locali};
+  \item \textbf{puntatore alla catena dinamica}, cioe un puntatore al record di attivazione precedente sullo stack.
+\end{itemize}
+
+Esempio di espressione con risultati intermedi:
+
+\begin{lstlisting}
+{
+    int a = 3;
+    b = (a + x) / (x + y);
+}
+\end{lstlisting}
+
+I valori intermedi \texttt{a + x} e \texttt{x + y} possono essere memorizzati nel record di attivazione oppure in registri, a seconda del compilatore e dell'architettura.
+
+\subsection{Record di Attivazione per Procedure}
+
+Per procedure e funzioni, il record di attivazione contiene informazioni aggiuntive per gestire il flusso di controllo:
+
+\begin{itemize}
+  \item risultati intermedi;
+  \item variabili locali;
+  \item puntatore alla \textbf{catena dinamica};
+  \item puntatore alla \textbf{catena statica};
+  \item indirizzo di ritorno;
+  \item eventuale posizione del risultato restituito;
+  \item parametri effettivi.
+\end{itemize}
+
+La \textbf{catena dinamica} collega i record secondo l'ordine temporale delle chiamate. La \textbf{catena statica}, invece, serve a implementare le regole di \textit{scope statico}.
+
+\subsection{Gestione dello Stack}
+
+La gestione dello stack e realizzata da frammenti di codice inseriti dal compilatore:
+
+\begin{itemize}
+  \item \textbf{calling sequence}: codice inserito nel chiamante prima e dopo la chiamata;
+  \item \textbf{prologue}: codice eseguito all'inizio della procedura chiamata;
+  \item \textbf{epilogue}: codice eseguito alla terminazione della procedura chiamata.
+\end{itemize}
+
+Durante una chiamata occorre:
+
+\begin{enumerate}
+  \item modificare il program counter;
+  \item allocare spazio sullo stack;
+  \item aggiornare il puntatore al record di attivazione corrente;
+  \item passare i parametri;
+  \item salvare registri e informazioni di controllo;
+  \item eseguire eventuale codice di inizializzazione.
+\end{enumerate}
+
+Al ritorno occorre:
+
+\begin{enumerate}
+  \item ripristinare il program counter;
+  \item restituire valori o risultati;
+  \item ripristinare registri;
+  \item eseguire eventuale finalizzazione;
+  \item deallocare lo spazio del record di attivazione.
+\end{enumerate}
+
+\section{Gestione Dinamica mediante Heap}
+
+Lo stack non e sufficiente quando il linguaggio permette allocazioni e deallocazioni esplicite in ordine arbitrario. In C, ad esempio, \texttt{malloc} e \texttt{free} possono essere alternati senza rispettare la disciplina LIFO.
+
+\subsection{Esempio di Allocazione Esplicita}
+
+\begin{lstlisting}[language=C]
+int *p, *q; /* p, q puntatori a interi */
+
+p = malloc(sizeof(int)); /* alloca la memoria puntata da p */
+q = malloc(sizeof(int)); /* alloca la memoria puntata da q */
+
+*p = 0;
+*q = 1;
+
+free(p);
+free(q);
+\end{lstlisting}
+
+Qui la memoria viene deallocata nello stesso ordine in cui e stata allocata: prima \texttt{p}, poi \texttt{q}. Questo comportamento non e compatibile con una gestione LIFO.
+
+Lo \textbf{heap} e un'area di memoria in cui blocchi possono essere allocati e deallocati in modo relativamente libero.
+
+\subsection{Heap a Blocchi di Lunghezza Fissa}
+
+Nel caso piu semplice, lo heap e diviso in blocchi di dimensione fissa collegati in una \textbf{free list}. Quando viene richiesta memoria:
+
+\begin{itemize}
+  \item si rimuove il primo blocco dalla free list;
+  \item si restituisce un puntatore a tale blocco;
+  \item si aggiorna il puntatore alla free list.
+\end{itemize}
+
+Quando un blocco viene deallocato, viene reinserito nella free list.
+
+\subsection{Heap a Blocchi di Lunghezza Variabile}
+
+Se il linguaggio permette oggetti di dimensione variabile, come array con dimensione nota solo a runtime, servono blocchi di lunghezza variabile.
+
+Il problema principale e la \textbf{frammentazione}:
+
+\begin{itemize}
+  \item \textbf{frammentazione interna}: viene allocato un blocco piu grande del necessario e la parte inutilizzata resta sprecata;
+  \item \textbf{frammentazione esterna}: la memoria libera totale sarebbe sufficiente, ma e divisa in blocchi non contigui troppo piccoli.
+\end{itemize}
+
+\subsection{Singola Free List}
+
+Con una singola free list, inizialmente l'intero heap e un solo blocco libero. Quando viene richiesto un blocco di $n$ parole:
+
+\begin{itemize}
+  \item si cerca un blocco libero di dimensione $k \geq n$;
+  \item si assegna una porzione di dimensione $n$;
+  \item se la parte residua $k-n$ supera una soglia prefissata, essa diventa un nuovo blocco libero.
+\end{itemize}
+
+Le strategie principali sono:
+
+\begin{itemize}
+  \item \textbf{first fit}: sceglie il primo blocco sufficientemente grande;
+  \item \textbf{best fit}: sceglie il blocco piu piccolo tra quelli sufficientemente grandi.
+\end{itemize}
+
+La \textit{first fit} privilegia il tempo di esecuzione; la \textit{best fit} tende a ridurre lo spreco di memoria.
+
+\subsection{Compattazione}
+
+Per ridurre la frammentazione esterna si possono fondere blocchi liberi contigui. Questa e una \textbf{compattazione parziale}. Una compattazione piu radicale sposta tutti i blocchi ancora attivi verso un'estremita dello heap, lasciando un unico grande blocco libero.
+
+Tale tecnica richiede che i blocchi allocati siano spostabili, condizione non sempre garantita se esistono puntatori verso tali blocchi.
+
+\subsection{Free List Multiple, Buddy System e Fibonacci Heap}
+
+Per ridurre il costo della ricerca, si possono usare piu free list, una per ciascuna classe di dimensione.
+
+Nel \textbf{buddy system}, le dimensioni dei blocchi sono potenze di due. Se si richiede un blocco di dimensione $n$, si cerca il minimo $k$ tale che:
+\[
+2^k \geq n.
+\]
+
+Se non esiste un blocco libero di dimensione $2^k$, si divide un blocco di dimensione $2^{k+1}$ in due blocchi \textit{buddy}. Quando entrambi tornano liberi, possono essere fusi.
+
+Il metodo detto \textbf{Fibonacci heap} usa invece dimensioni basate sui numeri di Fibonacci. Poiche la successione di Fibonacci cresce piu lentamente di $2^n$, puo ridurre la frammentazione interna.
+
+\section{Implementazione delle Regole di Scope}
+
+Le regole di \textbf{scope} stabiliscono quali associazioni nome-oggetto sono visibili in un punto del programma. Poiche i record di attivazione contengono le variabili locali, una referenza non locale richiede di individuare il record che contiene la dichiarazione rilevante.
+
+L'ordine di ricerca dipende dalla regola adottata:
+
+\begin{itemize}
+  \item con \textbf{scope statico}, conta la struttura testuale del programma;
+  \item con \textbf{scope dinamico}, conta l'ordine runtime delle attivazioni.
+\end{itemize}
+
+\subsection{Scope Statico e Catena Statica}
+
+Con \textbf{scope statico}, il record da consultare non e necessariamente quello precedente nello stack. Esso e determinato dalla struttura lessicale del programma.
+
+\begin{lstlisting}
+A: {
+    int y = 0;
+
+    B: {
+        int x = 0;
+
+        void fie(int n) {
+            x = n + 1;
+            y = n + 2;
+        }
+
+        C: {
+            int x = 1;
+            fie(2);
+            write(x);
+        }
+    }
+
+    write(y);
+}
+\end{lstlisting}
+
+Nel corpo di \texttt{fie}, la variabile \texttt{x} non e quella dichiarata in \texttt{C}, ma quella dichiarata in \texttt{B}, perche \texttt{fie} e dichiarata in \texttt{B}. La variabile \texttt{y} e invece quella dichiarata in \texttt{A}.
+
+La \textbf{catena statica} collega ogni record di attivazione al record del blocco immediatamente esterno secondo la struttura testuale del programma.
+
+Formalmente, se un riferimento a un nome non locale si trova a livello di annidamento $n$ e la dichiarazione e al livello $m$, con $m<n$, la distanza statica e:
+\[
+k = n-m.
+\]
+
+A runtime, si seguono $k$ puntatori della catena statica per raggiungere il record corretto. All'interno di tale record, la posizione della variabile e un offset noto staticamente.
+
+\subsection{Calcolo del Puntatore Statico}
+
+Quando una procedura viene chiamata, il puntatore alla catena statica puo essere calcolato in due casi principali:
+
+\begin{itemize}
+  \item se la procedura chiamata e esterna rispetto al chiamante, il chiamante segue la propria catena statica per il numero di livelli necessario;
+  \item se la procedura chiamata e dichiarata dentro il chiamante, il puntatore statico della chiamata punta al record del chiamante.
+\end{itemize}
+
+Il compilatore usa la \textbf{symbol table} per memorizzare nomi, livelli di annidamento, tipi, offset e informazioni necessarie alla risoluzione delle referenze.
+
+\subsection{Scope Statico e Display}
+
+La catena statica puo richiedere $k$ accessi a memoria per raggiungere un nome dichiarato $k$ livelli piu esternamente. Il \textbf{display} riduce tale costo a un numero costante di accessi.
+
+Il display e un vettore in cui l'elemento $k$ contiene un puntatore al record di attivazione attualmente attivo al livello di annidamento $k$.
+
+Per accedere a un oggetto dichiarato al livello $k$:
+
+\[
+\text{indirizzo oggetto}
+=
+\text{display}[k] + \text{offset statico}.
+\]
+
+Quando si entra in un blocco o procedura al livello $k$:
+
+\begin{enumerate}
+  \item si salva il vecchio valore di \texttt{display[k]};
+  \item si aggiorna \texttt{display[k]} con il nuovo record di attivazione.
+\end{enumerate}
+
+Quando si esce dal blocco, il vecchio valore viene ripristinato.
+
+\section{Scope Dinamico}
+
+Con \textbf{scope dinamico}, per risolvere una referenza non locale a un nome $x$ si percorre lo stack a ritroso, partendo dal record corrente, fino al primo record che contiene una dichiarazione attiva di $x$.
+
+Questa tecnica e concettualmente piu semplice dello scope statico, perche segue direttamente l'ordine delle attivazioni runtime.
+
+\subsection{Association List}
+
+Le associazioni nome-oggetto possono essere conservate in una \textbf{association list} o \textbf{A-list}, gestita come uno stack.
+
+Quando si entra in un ambiente:
+
+\begin{itemize}
+  \item si inseriscono nella A-list le nuove associazioni locali.
+\end{itemize}
+
+Quando si esce da un ambiente:
+
+\begin{itemize}
+  \item si rimuovono dalla A-list le associazioni locali.
+\end{itemize}
+
+Ogni associazione puo contenere:
+
+\begin{itemize}
+  \item nome;
+  \item posizione in memoria;
+  \item tipo;
+  \item flag di attivazione;
+  \item eventuali informazioni per controlli semantici runtime.
+\end{itemize}
+
+Lo svantaggio e che i nomi devono essere conservati a runtime e la ricerca puo richiedere la scansione di gran parte della lista.
+
+\subsection{Central Referencing Environment Table}
+
+La \textbf{Central Referencing Environment Table} (\textbf{CRT}) riduce il costo della ricerca. Tutti i nomi sono memorizzati in una tabella centrale. Per ogni nome si conserva:
+
+\begin{itemize}
+  \item un flag che indica se l'associazione e attiva;
+  \item un puntatore alle informazioni sull'oggetto associato;
+  \item eventualmente una pila delle associazioni disattivate.
+\end{itemize}
+
+Se tutti i nomi sono noti a tempo di compilazione, ogni nome puo avere una posizione fissa nella tabella. L'accesso avviene allora in tempo costante tramite offset. Se i nomi non sono tutti noti staticamente, si puo usare hashing a runtime.
+
+Il vantaggio della CRT e che non serve una ricerca lineare. Il costo si sposta pero sulle operazioni di ingresso e uscita dai blocchi, che devono aggiornare e ripristinare le associazioni.
+
+\section{Confronto tra le Tecniche}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Tecnica} & \textbf{Vantaggio} & \textbf{Limite} \\
+\hline
+Gestione statica & Semplice ed efficiente & Non adatta alla ricorsione generale \\
+\hline
+Stack & Naturale per blocchi e procedure LIFO & Non gestisce deallocazioni arbitrarie \\
+\hline
+Heap & Gestisce allocazioni libere & Richiede controllo della frammentazione \\
+\hline
+Catena statica & Implementa scope statico con offset noti & Accesso non locale proporzionale alla distanza \\
+\hline
+Display & Accesso non locale costante & Aggiornamento piu costoso su ingresso/uscita \\
+\hline
+A-list & Semplice per scope dinamico & Ricerca lineare e nomi a runtime \\
+\hline
+CRT & Evita ricerca lineare & Ingresso/uscita dai blocchi piu onerosi \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Sintesi Finale}
+
+La gestione della memoria nei linguaggi di programmazione combina tecniche statiche e dinamiche.
+
+\begin{itemize}
+  \item La \textbf{gestione statica} e adatta a oggetti con vita e posizione note a tempo di compilazione.
+  \item La \textbf{gestione tramite stack} e essenziale per blocchi, procedure e ricorsione, grazie alla disciplina LIFO.
+  \item La \textbf{gestione tramite heap} e necessaria per allocazioni e deallocazioni esplicite in ordine arbitrario.
+  \item Lo \textbf{scope statico} richiede strutture come catena statica o display.
+  \item Lo \textbf{scope dinamico} puo essere implementato con A-list o CRT.
+\end{itemize}
+
+Il punto cruciale e che la struttura della memoria runtime riflette direttamente le scelte semantiche del linguaggio: ricorsione, blocchi annidati, visibilita dei nomi, allocazione esplicita e durata degli oggetti.
+
+\end{document}

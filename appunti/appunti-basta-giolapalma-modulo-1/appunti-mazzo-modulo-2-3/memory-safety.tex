@@ -1,0 +1,755 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\bfseries\color{blue!60!black},
+  commentstyle=\itshape\color{green!40!black},
+  stringstyle=\color{red!50!black},
+  showstringspaces=false,
+  tabsize=2
+}
+
+\title{Sistemi di Tipi, Sicurezza della Memoria e Garbage Collection}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Relazioni di Preordine ed Equivalenza}
+
+Una relazione binaria $*$ su un insieme $D$ è un sottoinsieme del prodotto cartesiano:
+\[
+* \subseteq D \times D.
+\]
+Scriviamo $c * d$ per indicare $(c,d) \in *$.
+
+Una relazione è:
+\begin{itemize}
+  \item \textbf{riflessiva} se $\forall d \in D,\ d*d$;
+  \item \textbf{simmetrica} se $\forall c,d \in D,\ c*d \Rightarrow d*c$;
+  \item \textbf{transitiva} se $\forall c,d,e \in D,\ (c*d \land d*e) \Rightarrow c*e$;
+  \item \textbf{antisimmetrica} se $\forall c,d \in D,\ (c*d \land d*c) \Rightarrow c=d$.
+\end{itemize}
+
+Una relazione riflessiva e transitiva è un \textbf{preordine}. Un preordine simmetrico è una \textbf{equivalenza}; un preordine antisimmetrico è un \textbf{ordine parziale}.
+
+Nel contesto dei \textbf{sistemi di tipi}, le definizioni di tipo possono essere interpretate in due modi:
+\begin{itemize}
+  \item come definizioni \textbf{opache}, che conducono all'\textbf{equivalenza per nome};
+  \item come definizioni \textbf{trasparenti}, che conducono all'\textbf{equivalenza strutturale}.
+\end{itemize}
+
+\section{Equivalenza tra Tipi}
+
+\subsection{Equivalenza per Nome}
+
+\textbf{Definizione.} Due tipi sono equivalenti per nome se e solo se hanno lo stesso nome. In questa interpretazione, ogni nuova definizione introduce un nuovo tipo distinto.
+
+\begin{lstlisting}
+type T1 = 1..10;
+type T2 = 1..10;
+type T3 = int;
+type T4 = int;
+\end{lstlisting}
+
+Con \textbf{equivalenza per nome forte}, \texttt{T1}, \texttt{T2}, \texttt{T3} e \texttt{T4} sono quattro tipi distinti. Con \textbf{equivalenza per nome debole}, una semplice rinomina non introduce un nuovo tipo: \texttt{T3} e \texttt{T4} possono essere considerati alias dello stesso tipo, mentre \texttt{T1} e \texttt{T2} restano distinti.
+
+Un problema tipico emerge con i tipi anonimi. In Pascal, dichiarazioni strutturalmente identiche possono produrre tipi diversi:
+
+\begin{lstlisting}
+var V: array [1..10] of integer;
+    W: array [1..10] of integer;
+
+procedure f(Z: array [1..10] of integer);
+\end{lstlisting}
+
+Con equivalenza per nome, \texttt{V}, \texttt{W} e il parametro formale \texttt{Z} appartengono a tre tipi anonimi distinti.
+
+\subsection{Equivalenza Strutturale}
+
+\textbf{Definizione.} L'\textbf{equivalenza strutturale} è la più piccola relazione di equivalenza sui tipi tale che:
+\begin{enumerate}
+  \item il nome di un tipo è equivalente a sé stesso;
+  \item se un tipo $T$ è introdotto da una definizione \texttt{type T = expression}, allora $T$ è equivalente a \texttt{expression};
+  \item se due tipi sono costruiti applicando lo stesso costruttore di tipo a tipi equivalenti, allora i due tipi risultanti sono equivalenti.
+\end{enumerate}
+
+\begin{lstlisting}
+type T1 = int;
+type T2 = char;
+type T3 = struct{
+    T1 a;
+    T2 b;
+}
+type T4 = struct{
+    int a;
+    char b;
+}
+\end{lstlisting}
+
+\texttt{T3} e \texttt{T4} sono strutturalmente equivalenti, poiché dopo l'espansione dei nomi hanno la stessa struttura.
+
+L'equivalenza strutturale solleva però questioni sottili sui nomi dei campi, sull'ordine dei campi e sui tipi ricorsivi:
+
+\begin{lstlisting}
+type S = struct{
+    int a;
+    int b;
+}
+type T = struct{
+    int n;
+    int m;
+}
+type U = struct{
+    int m;
+    int n;
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+type R1 = struct{
+    int a;
+    R2 p;
+}
+type R2 = struct{
+    int a;
+    R1 p;
+}
+\end{lstlisting}
+
+Nel caso dei tipi ricorsivi, l'equivalenza può richiedere argomenti matematici più sofisticati della semplice espansione sintattica.
+
+\subsection{Scelte nei Linguaggi}
+
+I linguaggi reali combinano spesso le due nozioni:
+\begin{itemize}
+  \item Pascal usa equivalenza per nome debole;
+  \item Java usa equivalenza per nome, ma equivalenza strutturale per gli array;
+  \item C usa equivalenza strutturale per array e \texttt{typedef}, ma equivalenza per nome per \texttt{struct} e \texttt{union};
+  \item C\texttt{++} usa prevalentemente equivalenza per nome;
+  \item ML usa equivalenza strutturale, salvo per tipi definiti con \texttt{datatype}.
+\end{itemize}
+
+\section{Compatibilità e Conversione}
+
+\subsection{Compatibilità}
+
+\textbf{Definizione.} Un tipo $T$ è \textbf{compatibile} con un tipo $S$ se un valore di tipo $T$ può essere usato in ogni contesto in cui sarebbe ammissibile un valore di tipo $S$.
+
+La compatibilità è più debole dell'equivalenza. Se due tipi sono equivalenti, allora sono compatibili; il viceversa non vale in generale. La compatibilità è tipicamente un \textbf{preordine}: è riflessiva e transitiva, ma non necessariamente simmetrica.
+
+La compatibilità può essere interpretata con diversi gradi di permissività:
+\begin{enumerate}
+  \item $T$ e $S$ sono equivalenti;
+  \item i valori di $T$ sono un sottoinsieme dei valori di $S$;
+  \item tutte le operazioni ammesse su $S$ sono ammesse anche su $T$;
+  \item i valori di $T$ corrispondono canonicamente a valori di $S$;
+  \item i valori di $T$ possono essere trasformati convenzionalmente in valori di $S$.
+\end{enumerate}
+
+Esempio di compatibilità strutturale per record:
+
+\begin{lstlisting}
+type S = struct{
+    int a;
+}
+type T = struct{
+    int a;
+    char b;
+}
+\end{lstlisting}
+
+Ogni operazione su \texttt{S} che seleziona il campo \texttt{a} ha senso anche su valori di tipo \texttt{T}. Questa intuizione anticipa la nozione di \textbf{sottotipo}.
+
+\subsection{Coercion e Cast}
+
+Una \textbf{conversione implicita}, detta anche \textbf{coercion}, è inserita dalla macchina astratta senza annotazioni esplicite nel programma. Una \textbf{conversione esplicita}, o \textbf{cast}, è invece indicata direttamente dal programmatore.
+
+Nel caso generale:
+\[
+t : T,\qquad T \text{ compatibile con } S
+\]
+allora un contesto che richiede $S$ può accettare $t$, eventualmente dopo una conversione:
+\[
+\operatorname{coerce}_{T \to S}(t) : S.
+\]
+
+I cast possono anche non modificare la rappresentazione in memoria. Questo è pericoloso nei linguaggi non type-safe:
+
+\begin{lstlisting}[language=C]
+int a = 233;
+float b = *((float*) &a);
+\end{lstlisting}
+
+Qui l'indirizzo di \texttt{a} viene reinterpretato come puntatore a \texttt{float}. I bit non cambiano, ma cambia il tipo con cui vengono letti. Questo tipo di conversione è una possibile fonte di errori difficili da individuare.
+
+Nella notazione del capitolo, un cast è scritto come:
+
+\begin{lstlisting}
+S s = (S) t;
+\end{lstlisting}
+
+I linguaggi moderni tendono a preferire i \textbf{cast espliciti} alle coercion implicite, perché documentano meglio l'intenzione del programmatore e interagiscono in modo più prevedibile con overloading e polimorfismo.
+
+\section{Polimorfismo}
+
+\subsection{Nozione Generale}
+
+Un sistema di tipi è \textbf{monomorfico} se ogni oggetto del linguaggio ha un unico tipo. È invece \textbf{polimorfico} se lo stesso oggetto può avere più di un tipo.
+
+\textbf{Definizione.} Un sistema di tipi in cui lo stesso oggetto può avere più di un tipo è detto \textbf{polimorfico}; per estensione, un oggetto è polimorfico quando il sistema di tipi gli assegna più di un tipo.
+
+Esempi ricorrenti:
+\[
++ : int \times int \to int,
+\qquad
++ : float \times float \to float.
+\]
+
+Il valore \texttt{null} può avere tipo $T^*$ per ogni tipo $T$, e una funzione \texttt{length} su array può avere tipo:
+\[
+T[] \to int.
+\]
+
+\subsection{Motivazione}
+
+Senza polimorfismo, funzioni identiche devono essere duplicate cambiando solo le annotazioni di tipo:
+
+\begin{lstlisting}
+void int_sort(int A[])
+\end{lstlisting}
+
+\begin{lstlisting}
+void char_sort(char C[])
+\end{lstlisting}
+
+In un linguaggio polimorfico si può scrivere un'unica funzione generica:
+
+\begin{lstlisting}
+void sort(<T> A[])
+\end{lstlisting}
+
+Le principali forme di polimorfismo sono:
+\begin{itemize}
+  \item \textbf{polimorfismo ad hoc}, o \textbf{overloading};
+  \item \textbf{polimorfismo universale parametrico};
+  \item \textbf{polimorfismo universale per sottotipo}.
+\end{itemize}
+
+\subsection{Overloading}
+
+Un nome è \textbf{overloaded} quando denota più oggetti distinti e il contesto deve determinare quale oggetto è effettivamente inteso.
+
+Esempi:
+\begin{itemize}
+  \item \texttt{+} come somma intera, somma reale o concatenazione;
+  \item più funzioni con lo stesso nome ma parametri diversi.
+\end{itemize}
+
+L'overloading viene risolto staticamente usando informazioni di tipo. Concettualmente, il compilatore sostituisce ogni nome ambiguo con un nome non ambiguo.
+
+L'interazione tra overloading e coercion può rendere ambigua la semantica:
+
+\begin{lstlisting}
+1 + 2
+1.0 + 2.0
+1 + 2.0
+1.0 + 2
+\end{lstlisting}
+
+Il linguaggio deve specificare se \texttt{+} ha molteplici significati, se vengono inserite coercion, oppure se entrambe le tecniche cooperano.
+
+\subsection{Polimorfismo Parametrico Universale}
+
+\textbf{Definizione.} Un valore mostra \textbf{polimorfismo parametrico universale} quando possiede un numero infinito di tipi ottenibili istanziando un unico schema di tipo generale.
+
+Una funzione parametricamente polimorfica è implementata da un solo algoritmo uniforme, che non dipende dalla struttura specifica del tipo.
+
+La notazione:
+\[
+\forall T.\ T[] \to void
+\]
+esprime una funzione applicabile ad array di qualunque tipo $T$.
+
+Esempio: scambio di due variabili dello stesso tipo generico.
+
+\begin{lstlisting}
+void swap(reference <T> x, reference <T> y){
+    <T> tmp = x;
+    x = y;
+    y = tmp;
+}
+\end{lstlisting}
+
+Esempio di istanziazione automatica:
+
+\begin{lstlisting}
+int* k = null;
+char v, w;
+int i, j;
+
+swap(v, w);
+swap(i, j);
+\end{lstlisting}
+
+Nel primo caso \texttt{null} è istanziato come \texttt{int*}; poi \texttt{swap} viene istanziata rispettivamente sui caratteri e sugli interi.
+
+\subsection{Polimorfismo Esplicito e Implicito}
+
+Nel \textbf{polimorfismo esplicito}, il programma contiene annotazioni visibili dei parametri di tipo, come \texttt{<T>}. È il modello dei template di C\texttt{++} e dei generics di Java.
+
+Nel \textbf{polimorfismo implicito}, tipico di ML, il programmatore non fornisce annotazioni di tipo; il sistema inferisce il tipo più generale.
+
+Esempio di funzione identità:
+
+\begin{lstlisting}
+fun Ide(x){return x;}
+\end{lstlisting}
+
+Il tipo inferito è:
+\[
+\forall T.\ T \to T.
+\]
+
+Esempio di composizione:
+
+\begin{lstlisting}
+fun Comp(f, g, x){return f(g(x));}
+\end{lstlisting}
+
+Il tipo più generale è:
+\[
+(S \to T) \times (R \to S) \times R \to T.
+\]
+
+In forma polimorfica:
+\[
+\forall R,S,T.\ (S \to T) \times (R \to S) \times R \to T.
+\]
+
+\subsection{Esempi in ML}
+
+\begin{lstlisting}
+- fun Ide(x) = x;
+val Ide = fn : 'a -> 'a
+
+- Ide(4);
+val it = 4 : int
+
+- Ide(true);
+val it = true : bool
+\end{lstlisting}
+
+\begin{lstlisting}
+- fun Comp(f,g,x) = f(g(x));
+val Comp = fn : ('a -> 'b) * ('c -> 'a) * 'c -> 'b
+\end{lstlisting}
+
+\begin{lstlisting}
+- fun swap(x,y) = let tmp = !x in
+                    (x := !y; y := tmp;)
+                  end;
+val swap = fn : ('a ref) * ('a ref) -> unit
+\end{lstlisting}
+
+Il tipo \texttt{'a ref} indica una variabile o riferimento di tipo arbitrario. Il tipo \texttt{unit} è il tipo singleton usato per espressioni con effetti collaterali.
+
+\subsection{Polimorfismo per Sottotipo}
+
+Il \textbf{polimorfismo per sottotipo} è tipico dei linguaggi orientati agli oggetti. Supponendo una relazione di sottotipo $<:$, la scrittura:
+\[
+C <: D
+\]
+si legge ``$C$ è sottotipo di $D$''.
+
+\textbf{Definizione.} Un valore mostra \textbf{polimorfismo per sottotipo} quando esistono infiniti tipi ottenibili istanziando uno schema generale con i sottotipi di un tipo assegnato.
+
+Una funzione di tipo:
+\[
+\forall T <: D.\ T \to void
+\]
+può essere applicata a valori di qualunque sottotipo di $D$. Il polimorfismo è dunque limitato dal vincolo di sottotipo.
+
+\subsection{Implementazione del Polimorfismo}
+
+Un primo approccio, tipico di C\texttt{++}, risolve il polimorfismo staticamente, generando una copia del codice per ogni istanziazione.
+
+\begin{lstlisting}[language=C++]
+template<typename T>
+void swap(T& x, T& y){
+    T tmp = x;
+    x = y;
+    y = tmp;
+}
+\end{lstlisting}
+
+Questo produce codice efficiente a runtime, ma può aumentare la dimensione dell'eseguibile.
+
+Un secondo approccio mantiene una sola versione del codice polimorfico. I dati vengono rappresentati indirettamente tramite puntatori e descrittori dinamici. Questa soluzione riduce la duplicazione del codice, ma introduce un costo di accesso indiretto.
+
+\section{Type Checking e Type Inference}
+
+\subsection{Type Checking}
+
+Il \textbf{type checker} verifica che il programma rispetti le regole imposte dal sistema di tipi, in particolare le regole di compatibilità.
+
+Nel \textbf{controllo statico}, il type checker è un modulo del compilatore. Nel \textbf{controllo dinamico}, è parte del sistema runtime.
+
+Il type checker visita l'\textbf{albero di sintassi astratta} dal basso verso l'alto:
+\begin{itemize}
+  \item parte da variabili e costanti, i cui tipi sono noti;
+  \item calcola il tipo delle espressioni composte;
+  \item verifica che operatori, assegnamenti e chiamate siano coerenti con il sistema di tipi.
+\end{itemize}
+
+Esempio:
+
+\begin{lstlisting}
+int f(int n){return n + 1;}
+\end{lstlisting}
+
+Dal fatto che \texttt{n} è \texttt{int}, che \texttt{1} è \texttt{int} e che \texttt{+} applicato a due interi restituisce un intero, il sistema può verificare che il risultato è \texttt{int}.
+
+\subsection{Type Inference}
+
+La \textbf{type inference} attribuisce un tipo a un'espressione anche in assenza di dichiarazioni esplicite.
+
+\begin{lstlisting}
+fun f(n){return n + 1;}
+\end{lstlisting}
+
+Poiché \texttt{1} è intero e \texttt{+} richiede due interi, l'algoritmo inferisce:
+\[
+f : int \to int.
+\]
+
+Schema semplificato dell'inferenza:
+\begin{enumerate}
+  \item assegnare un tipo a ogni nodo dell'albero sintattico; per nomi non ancora noti usare variabili di tipo;
+  \item attraversare l'albero generando vincoli di uguaglianza tra tipi;
+  \item risolvere i vincoli mediante \textbf{unificazione}.
+\end{enumerate}
+
+Se una funzione $f$ ha tipo iniziale $\alpha$ e viene applicata a un argomento $v$ di tipo $\beta$, si genera il vincolo:
+\[
+\alpha = \beta \to \gamma
+\]
+dove $\gamma$ è una nuova variabile di tipo per il risultato.
+
+Esempio:
+
+\begin{lstlisting}
+fun g(n){return n;}
+\end{lstlisting}
+
+Il tipo inferito è:
+\[
+\forall T.\ T \to T.
+\]
+
+La presenza di variabili di tipo non risolte non è un errore: indica una espressione polimorfica.
+
+\section{Safety dei Linguaggi}
+
+La \textbf{safety} basata sui tipi riguarda la garanzia che l'esecuzione di un programma ben tipato non produca errori nascosti dovuti a violazioni di tipo.
+
+I linguaggi possono essere classificati in:
+\begin{enumerate}
+  \item \textbf{non safe};
+  \item \textbf{localmente safe};
+  \item \textbf{safe}.
+\end{enumerate}
+
+\subsection{Linguaggi Non Safe}
+
+Un linguaggio è \textbf{non safe} quando il sistema di tipi può essere aggirato dal programmatore. Appartengono a questa categoria i linguaggi che permettono:
+\begin{itemize}
+  \item accesso diretto alla rappresentazione dei dati;
+  \item aritmetica sui puntatori;
+  \item reinterpretazioni non controllate della memoria.
+\end{itemize}
+
+C e C\texttt{++} sono esempi classici di linguaggi non safe.
+
+\subsection{Linguaggi Localmente Safe}
+
+I linguaggi \textbf{localmente safe} hanno un sistema di tipi regolato e controllato, ma includono costrutti limitati che possono introdurre insicurezza. Esempi sono Algol, Pascal e Ada, quando dispongono di controlli runtime adeguati.
+
+Le principali fonti di insicurezza sono:
+\begin{itemize}
+  \item \textbf{unioni} o varianti non controllate;
+  \item \textbf{deallocazione esplicita} della memoria.
+\end{itemize}
+
+Esempio in Pascal di variante che permette di manipolare un puntatore come intero:
+
+\begin{lstlisting}
+var v: record
+    case bool of
+        true  : (i: integer);
+        false : (p: ^integer)
+end
+\end{lstlisting}
+
+\subsection{Linguaggi Safe}
+
+Un linguaggio è \textbf{safe} se un teorema garantisce che l'esecuzione di un programma tipato non può generare errori nascosti indotti da violazioni di tipo.
+
+Esempi:
+\begin{itemize}
+  \item Lisp e Scheme, con controllo dinamico dei tipi;
+  \item ML, con controllo statico;
+  \item Java, con controllo statico e numerosi controlli runtime.
+\end{itemize}
+
+\section{Dangling References}
+
+Una \textbf{dangling reference} è un riferimento a un oggetto la cui vita è terminata. Dereferenziare tale riferimento può produrre errori di sicurezza e corruzione della memoria.
+
+La macchina astratta può includere meccanismi dinamici per prevenire la dereferenziazione di puntatori pendenti.
+
+\subsection{Tombstone}
+
+Con la tecnica delle \textbf{tombstone}, a ogni oggetto allocato viene associata una parola aggiuntiva di memoria, detta tombstone.
+
+Il puntatore non contiene direttamente l'indirizzo dell'oggetto, ma l'indirizzo della tombstone. La tombstone contiene l'indirizzo dell'oggetto:
+\[
+\text{puntatore} \to \text{tombstone} \to \text{oggetto}.
+\]
+
+Quando l'oggetto viene deallocato, la tombstone viene invalidata con un valore speciale. Ogni successiva dereferenziazione passa dalla tombstone e può rilevare l'errore.
+
+Vantaggi:
+\begin{itemize}
+  \item rileva ogni tentativo di dereferenziare un riferimento pendente;
+  \item funziona sia per puntatori allo heap sia, con opportune cautele, per puntatori allo stack.
+\end{itemize}
+
+Svantaggi:
+\begin{itemize}
+  \item richiede un secondo livello di indirezione;
+  \item consuma memoria aggiuntiva;
+  \item le tombstone invalide possono accumularsi;
+  \item può richiedere un garbage collector per riciclare tombstone non più referenziate.
+\end{itemize}
+
+\subsection{Locks and Keys}
+
+La tecnica \textbf{locks and keys} associa a ogni oggetto dello heap una \textbf{lock}. Ogni puntatore contiene:
+\[
+(\text{indirizzo},\ \text{key}).
+\]
+
+La \textbf{key} viene inizializzata con il valore della lock dell'oggetto. A ogni dereferenziazione, la macchina astratta controlla:
+\[
+\text{key} = \text{lock}.
+\]
+
+Se il controllo fallisce, viene segnalato un errore. Quando l'oggetto viene deallocato, la lock è invalidata.
+
+Rispetto alle tombstone:
+\begin{itemize}
+  \item non accumula strutture invalide permanenti;
+  \item richiede più spazio per i puntatori, perché ogni puntatore contiene anche una key;
+  \item introduce un costo su assegnamento e dereferenziazione dei puntatori;
+  \item offre una protezione probabilistica nel caso di riuso della memoria.
+\end{itemize}
+
+\section{Garbage Collection}
+
+Nei linguaggi senza deallocazione esplicita, la macchina astratta deve recuperare automaticamente la memoria heap non più utilizzata. Tale compito è svolto dal \textbf{garbage collector}.
+
+Dal punto di vista logico, un garbage collector ha due fasi:
+\begin{enumerate}
+  \item \textbf{garbage detection}: distinguere gli oggetti vivi da quelli non più utilizzabili;
+  \item \textbf{reclamation}: recuperare la memoria degli oggetti non più in uso.
+\end{enumerate}
+
+In pratica, le due fasi possono essere intrecciate. Inoltre, la nozione di oggetto ``non più in uso'' è spesso una approssimazione conservativa.
+
+\subsection{Root Set e Descrittori}
+
+Le tecniche di garbage collection devono riconoscere quali campi di un oggetto sono puntatori. Se i tipi sono statici, il compilatore può generare un \textbf{descrittore di tipo} contenente gli offset dei campi puntatore.
+
+Il \textbf{root set} è l'insieme dei riferimenti attivi da cui parte la visita degli oggetti raggiungibili, tipicamente:
+\begin{itemize}
+  \item puntatori presenti nello stack;
+  \item registri;
+  \item variabili globali.
+\end{itemize}
+
+\subsection{Reference Counting}
+
+Nel \textbf{reference counting}, a ogni oggetto heap è associato un contatore che registra il numero di puntatori attivi verso quell'oggetto.
+
+Alla creazione:
+\[
+rc(o) = 1.
+\]
+
+Per un assegnamento:
+
+\begin{lstlisting}
+p = q;
+\end{lstlisting}
+
+la macchina astratta:
+\begin{itemize}
+  \item incrementa il contatore dell'oggetto puntato da \texttt{q};
+  \item decrementa il contatore dell'oggetto precedentemente puntato da \texttt{p}.
+\end{itemize}
+
+Quando:
+\[
+rc(o)=0,
+\]
+l'oggetto $o$ può essere deallocato. Se contiene puntatori interni, i contatori degli oggetti puntati vengono decrementati ricorsivamente.
+
+Vantaggi:
+\begin{itemize}
+  \item è semplice;
+  \item è incrementale;
+  \item può essere adatto a sistemi real-time.
+\end{itemize}
+
+Limiti:
+\begin{itemize}
+  \item non recupera strutture circolari irraggiungibili;
+  \item introduce costo su assegnamenti e uscita dagli ambienti locali;
+  \item il costo dipende dal lavoro del programma, non solo dalla dimensione dello heap.
+\end{itemize}
+
+\subsection{Mark and Sweep}
+
+Il metodo \textbf{mark and sweep} implementa esplicitamente le due fasi:
+
+\begin{enumerate}
+  \item \textbf{Mark}: tutti gli oggetti sono inizialmente marcati come non in uso; partendo dal root set, si visitano ricorsivamente gli oggetti raggiungibili e li si marca come in uso.
+  \item \textbf{Sweep}: lo heap viene scandito; gli oggetti marcati come in uso restano allocati, gli altri tornano nella free list.
+\end{enumerate}
+
+Limiti principali:
+\begin{itemize}
+  \item non è incrementale;
+  \item può causare pause percepibili;
+  \item richiede tempo proporzionale alla dimensione totale dello heap;
+  \item non elimina la frammentazione esterna;
+  \item può peggiorare la località di riferimento.
+\end{itemize}
+
+\subsection{Pointer Reversal}
+
+La fase di marking richiede una visita ricorsiva del grafo degli oggetti. Se la memoria è quasi esaurita, usare uno stack ausiliario può essere problematico.
+
+La tecnica del \textbf{pointer reversal} usa temporaneamente i puntatori della struttura visitata per rappresentare lo stack di visita. Al termine, i puntatori vengono ripristinati:
+\[
+\text{struttura finale} = \text{struttura iniziale} \quad \text{a meno dei marchi di visita}.
+\]
+
+Questa tecnica consente di visitare strutture collegate usando solo un numero costante di puntatori ausiliari, come \texttt{p\_prec} e \texttt{p\_curr}.
+
+\subsection{Mark and Compact}
+
+Il metodo \textbf{mark and compact} sostituisce la fase di sweep con una fase di compattazione. Gli oggetti vivi sono spostati in modo contiguo, lasciando un unico blocco di memoria libera.
+
+La compattazione richiede tipicamente:
+\begin{enumerate}
+  \item calcolo della nuova posizione degli oggetti vivi;
+  \item aggiornamento dei puntatori interni;
+  \item spostamento effettivo degli oggetti.
+\end{enumerate}
+
+Vantaggi:
+\begin{itemize}
+  \item elimina la frammentazione esterna;
+  \item migliora la località;
+  \item rende la memoria libera gestibile come un unico blocco.
+\end{itemize}
+
+Svantaggio principale: è più costoso di mark and sweep quando molti oggetti devono essere spostati.
+
+\subsection{Stop and Copy}
+
+Nel garbage collector \textbf{stop and copy}, lo heap è diviso in due semi-spazi:
+\begin{itemize}
+  \item \textbf{fromspace}, usato durante l'esecuzione normale;
+  \item \textbf{tospace}, usato durante la raccolta.
+\end{itemize}
+
+Quando il fromspace si esaurisce, il collector parte dal root set, copia nel tospace tutti gli oggetti vivi e li compatta. Al termine, i ruoli dei due semi-spazi vengono scambiati.
+
+Il costo della raccolta è proporzionale al numero di oggetti vivi:
+\[
+T_{\mathrm{GC}} = O(\#\text{oggetti vivi}).
+\]
+
+L'allocazione normale è molto efficiente, poiché avviene per semplice avanzamento di un puntatore.
+
+\subsection{Algoritmo di Cheney}
+
+L'\textbf{algoritmo di Cheney} realizza efficientemente stop and copy trattando gli oggetti copiati nel tospace come una coda:
+\begin{enumerate}
+  \item copia nel tospace gli oggetti immediatamente raggiungibili dal root set;
+  \item considera il primo oggetto della coda;
+  \item copia in fondo alla coda gli oggetti puntati dai suoi campi;
+  \item aggiorna i puntatori verso le nuove copie;
+  \item continua finché la coda è vuota.
+\end{enumerate}
+
+Al termine, il tospace contiene una copia compatta di tutti e soli gli oggetti vivi.
+
+\section{Quadro Riassuntivo}
+
+\begin{center}
+\begin{tabular}{|p{3.2cm}|p{5.2cm}|p{5.2cm}|}
+\hline
+\textbf{Tecnica} & \textbf{Idea centrale} & \textbf{Limite principale} \\
+\hline
+Equivalenza per nome & Due tipi coincidono solo se hanno lo stesso nome & Può essere troppo restrittiva con tipi anonimi \\
+\hline
+Equivalenza strutturale & Due tipi coincidono se hanno la stessa struttura & Ambigua con campi nominati, ordine e tipi ricorsivi \\
+\hline
+Coercion & Conversione implicita inserita dalla macchina astratta & Può nascondere trasformazioni costose o pericolose \\
+\hline
+Cast & Conversione esplicita scritta dal programmatore & Può violare la safety se reinterpreta la memoria \\
+\hline
+Polimorfismo parametrico & Un algoritmo uniforme vale per molti tipi & Implementazione potenzialmente costosa o duplicata \\
+\hline
+Polimorfismo per sottotipo & Istanziazione limitata ai sottotipi di un tipo dato & Dipende da una relazione di sottotipo ben definita \\
+\hline
+Tombstone & Puntatori indiretti tramite celle invalidabili & Alto costo di spazio e tempo \\
+\hline
+Locks and keys & Puntatore come coppia indirizzo-key & Costo su puntatori e controllo probabilistico \\
+\hline
+Reference counting & Ogni oggetto conta i puntatori entranti & Non raccoglie cicli \\
+\hline
+Mark and sweep & Marca i raggiungibili e libera il resto & Frammentazione e pause non incrementali \\
+\hline
+Mark and compact & Sposta i vivi in memoria contigua & Più passate e costo di spostamento \\
+\hline
+Stop and copy & Copia solo gli oggetti vivi in un semi-spazio & Richiede memoria divisa in due semi-spazi \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Sintesi Finale}
+
+Il capitolo mostra che la \textbf{sicurezza della memoria} e la \textbf{sicurezza dei tipi} sono strettamente connesse. Le nozioni di equivalenza, compatibilità, conversione, polimorfismo e inferenza determinano quali programmi sono considerati corretti dal linguaggio; i meccanismi runtime, come tombstone, locks and keys e garbage collection, proteggono invece l'esecuzione concreta da errori legati a riferimenti pendenti e gestione dello heap.
+
+Un linguaggio è tanto più sicuro quanto più impedisce al programmatore di violare l'astrazione dei tipi e quanto più la macchina astratta può garantire che ogni accesso alla memoria sia coerente con le regole del sistema di tipi.
+
+\end{document}

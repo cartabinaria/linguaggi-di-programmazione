@@ -1,0 +1,775 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\bfseries\color{blue!60!black},
+  commentstyle=\itshape\color{green!40!black},
+  stringstyle=\color{red!50!black},
+  showstringspaces=false,
+  tabsize=2
+}
+
+\title{Astrazione del Controllo nei Linguaggi di Programmazione}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Il Concetto di Astrazione}
+
+\textbf{Astrarre} significa nascondere alcuni dettagli concreti per mettere in evidenza una struttura concettuale più generale. Nei linguaggi di programmazione l'astrazione è essenziale perché consente di descrivere problemi complessi in modo più semplice, modulare e manutenibile.
+
+Si distinguono due grandi classi di meccanismi:
+\begin{itemize}
+  \item \textbf{astrazione del controllo}, che nasconde dati procedurali e schemi di esecuzione;
+  \item \textbf{astrazione dei dati}, che consente di definire e usare tipi complessi indipendentemente dalla loro implementazione.
+\end{itemize}
+
+Questo documento riguarda l'\textbf{astrazione del controllo}: sottoprogrammi, passaggio dei parametri, funzioni di ordine superiore ed eccezioni.
+
+\section{Sottoprogrammi}
+
+Un \textbf{sottoprogramma}, \textbf{procedura} o \textbf{funzione} è una porzione di codice identificata da un nome, dotata di un ambiente locale e capace di comunicare con il resto del programma tramite:
+\begin{itemize}
+  \item parametri;
+  \item valore di ritorno;
+  \item ambiente non locale.
+\end{itemize}
+
+\subsection{Definizione e Chiamata}
+
+\begin{lstlisting}
+int foo(int n, int a) {
+    int tmp = a;
+    if (tmp == 0) return n;
+    else return n + 1;
+}
+
+...
+int x;
+x = foo(3, 0);
+x = foo(x + 1, 1);
+\end{lstlisting}
+
+La prima parte è la \textbf{definizione} della funzione; le ultime due istruzioni sono \textbf{chiamate}. La riga iniziale è detta \textbf{header}; il resto è il \textbf{corpo}.
+
+\subsection{Parametri Formali e Attuali}
+
+I \textbf{parametri formali} compaiono nella definizione della funzione e si comportano come nomi locali. I \textbf{parametri attuali} compaiono nella chiamata.
+
+I parametri formali sono \textbf{variabili vincolate}: una rinomina coerente non modifica la semantica della funzione.
+
+\begin{lstlisting}
+int foo(int m, int b){
+    int tmp = b;
+    if (tmp == 0) return m;
+    else return m + 1;
+}
+\end{lstlisting}
+
+Questa funzione è semanticamente indistinguibile dalla precedente: cambiano i nomi formali, non la computazione.
+
+\subsection{Valore di Ritorno}
+
+Una funzione può restituire un valore al chiamante. Nei linguaggi della famiglia C, anche le procedure sono rappresentate linguisticamente come funzioni; quando il tipo di risultato è \texttt{void}, non viene restituito alcun valore significativo.
+
+\subsection{Ambiente Non Locale}
+
+Una funzione può comunicare con il resto del programma modificando variabili non locali. Questo meccanismo è meno strutturato rispetto a parametri e valori di ritorno e può indebolire l'astrazione funzionale.
+
+\section{Astrazione Funzionale}
+
+La \textbf{functional abstraction} separa ciò che il client deve conoscere da ciò che può essere nascosto:
+\begin{itemize}
+  \item il client conosce nome, parametri e tipo del risultato;
+  \item il corpo della funzione è nascosto;
+  \item l'implementazione può essere sostituita, se conserva la stessa semantica osservabile.
+\end{itemize}
+
+Si ha vera astrazione funzionale quando i client dipendono solo dall'header della funzione e non dal suo corpo.
+
+\subsection{Variabili Statiche Locali}
+
+In alcuni linguaggi una variabile locale può mantenere il proprio valore tra invocazioni diverse della stessa funzione. In C ciò si ottiene con il modificatore \texttt{static}.
+
+\begin{lstlisting}[language=C]
+int how_many_times(){
+    static int count;
+    /* C guarantees that static variables are
+       initialised to zero by the first
+       activation of the function */
+    return count++;
+}
+\end{lstlisting}
+
+Una variabile statica locale ha \textbf{lifetime} pari all'intera esecuzione del programma, ma \textbf{scope} limitato alla funzione. Offre quindi più astrazione rispetto a una variabile globale, perché non è modificabile dall'esterno.
+
+\section{Passaggio dei Parametri}
+
+La \textbf{disciplina di passaggio dei parametri} stabilisce come i parametri attuali sono associati ai parametri formali e quale semantica deriva da tale associazione.
+
+Dal punto di vista della comunicazione, i parametri sono:
+\begin{itemize}
+  \item \textbf{input}, se comunicano dal chiamante al chiamato;
+  \item \textbf{output}, se comunicano dal chiamato al chiamante;
+  \item \textbf{input/output}, se la comunicazione è bidirezionale.
+\end{itemize}
+
+\subsection{Call by Value}
+
+Il \textbf{call by value} implementa parametri di input. Alla chiamata, il parametro attuale viene valutato e il suo \textbf{r-value} viene copiato in una nuova variabile locale associata al parametro formale.
+
+\begin{lstlisting}
+int y = 1;
+
+void foo(int x) {
+    x = x + 1;
+}
+
+y = 1;
+foo(y + 1);
+// here y = 1
+\end{lstlisting}
+
+Durante l'esecuzione di \texttt{foo}, il parametro \texttt{x} assume valore iniziale $2$, viene incrementato a $3$, poi viene distrutto con il record di attivazione. La variabile \texttt{y} non cambia.
+
+Proprietà principali:
+\begin{itemize}
+  \item l'attuale può essere una qualunque espressione;
+  \item non c'è collegamento tra formale e attuale dopo la copia;
+  \item non permette comunicazione dal chiamato al chiamante;
+  \item è costoso per strutture dati grandi, perché richiede copia.
+\end{itemize}
+
+\subsection{Call by Reference}
+
+Il \textbf{call by reference} implementa comunicazione input/output. Il parametro attuale deve avere un \textbf{l-value}; il formale diventa un alias dell'attuale.
+
+\begin{lstlisting}
+int y = 0;
+
+void foo(reference int x) {
+    x = x + 1;
+}
+
+y = 0;
+foo(y);
+// here y = 1
+\end{lstlisting}
+
+Durante la chiamata, \texttt{x} e \texttt{y} sono due nomi per la stessa locazione. Ogni modifica a \texttt{x} modifica \texttt{y}.
+
+Il parametro attuale può anche essere un'espressione dotata di l-value:
+
+\begin{lstlisting}
+int[] V = new V[10];
+int i = 0;
+
+void foo(reference int x) {
+    x = x + 1;
+}
+
+...
+V[1] = 1;
+foo(V[i + 1]);
+// here V[1] = 2
+\end{lstlisting}
+
+Nell'implementazione con stack, nel record di attivazione del chiamato si memorizza l'indirizzo dell'attuale. Ogni accesso al formale richiede un'indirezione.
+
+\subsection{Simulazione del Call by Reference in C}
+
+C supporta solo il passaggio per valore, ma i puntatori permettono di simulare il passaggio per riferimento.
+
+\begin{lstlisting}[language=C]
+void swap(int *a, int *b) {
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+int v1 = ...;
+int v2 = ...;
+swap(&v1, &v2);
+\end{lstlisting}
+
+I parametri \texttt{a} e \texttt{b} sono passati per valore, ma i loro valori sono indirizzi. Il dereferencing permette di modificare le variabili originali.
+
+\subsection{Comunicazione Bidirezionale in Java}
+
+Java passa i parametri per valore, ma per gli oggetti il valore copiato è una reference. È quindi possibile modificare lo stato dell'oggetto ricevuto, ma non sostituire la variabile del chiamante.
+
+\begin{lstlisting}
+class A{
+    int v;
+}
+
+void swap(A a, A b) {
+    int tmp = a.v;
+    a.v = b.v;
+    b.v = tmp;
+}
+\end{lstlisting}
+
+Questo consente una forma di comunicazione bidirezionale sullo stato degli oggetti, ma non una vera simulazione generale del call by reference.
+
+\subsection{Call by Constant}
+
+Il \textbf{call by constant} è semanticamente equivalente al call by value, ma il formale non può essere modificato. È un parametro di input con vincolo statico di sola lettura.
+
+Vantaggi:
+\begin{itemize}
+  \item documenta che il parametro è solo input;
+  \item consente al compilatore di evitare copie costose usando una reference;
+  \item preserva la semantica del call by value.
+\end{itemize}
+
+\subsection{Call by Result}
+
+Il \textbf{call by result} è il duale del call by value. Implementa parametri solo output. Il formale è una variabile locale non inizializzata rispetto all'attuale; alla terminazione normale della procedura, il valore del formale viene copiato nella locazione dell'attuale.
+
+\begin{lstlisting}
+void foo(result int x) {
+    x = 8;
+}
+
+...
+int y = 1;
+foo(y);
+// here y is 8
+\end{lstlisting}
+
+Questioni semantiche rilevanti:
+\begin{itemize}
+  \item se ci sono più parametri result, occorre definire l'ordine delle copie finali;
+  \item bisogna stabilire se l'l-value dell'attuale è calcolato alla chiamata o alla terminazione.
+\end{itemize}
+
+\subsection{Call by Value-Result}
+
+Il \textbf{call by value-result} combina call by value e call by result. Alla chiamata si copia il valore dell'attuale nel formale; alla terminazione si copia il valore finale del formale nell'attuale.
+
+\begin{lstlisting}
+void foo(valueresult int x){
+    x = x + 1;
+}
+
+...
+y = 8;
+foo(y);
+// here y is 9
+\end{lstlisting}
+
+Il formale è una variabile locale. Per questo il call by value-result non coincide semanticamente con il call by reference in presenza di aliasing.
+
+\begin{lstlisting}
+void foo(reference/valueresult int x,
+         reference/valueresult int y,
+         reference int z){
+    y = 2;
+    x = 4;
+    if (x == y) z = 1;
+}
+
+...
+int a = 3;
+int b = 0;
+foo(a, a, b);
+\end{lstlisting}
+
+Se \texttt{x} e \texttt{y} sono value-result, non sono alias: il test può risultare falso e \texttt{b} non viene modificato. Se sono reference, \texttt{x} e \texttt{y} indicano la stessa locazione e il test è vero.
+
+\subsection{Call by Name}
+
+Il \textbf{call by name}, introdotto in ALGOL 60, è definito tramite la \textbf{copy rule}.
+
+\textbf{Regola di copia.} Sia $f$ una funzione con un parametro formale $x$ e sia $a$ un'espressione compatibile con $x$. La chiamata $f(a)$ è semanticamente equivalente all'esecuzione del corpo di $f$ in cui ogni occorrenza di $x$ è sostituita da $a$, evitando cattura di variabili.
+
+La sostituzione deve essere \textbf{capture-free}: l'attuale deve essere valutato nell'ambiente del chiamante, non nell'ambiente del chiamato.
+
+\begin{lstlisting}
+int x = 0;
+
+int foo(name int y){
+    int x = 2;
+    return x + y;
+}
+
+...
+int a = foo(x + 1);
+\end{lstlisting}
+
+Se l'espressione \texttt{x + 1} fosse valutata nell'ambiente del chiamato, la \texttt{x} locale catturerebbe la \texttt{x} del chiamante. Il call by name evita questa cattura associando all'espressione il suo ambiente originario.
+
+\subsection{Effetti Collaterali nel Call by Name}
+
+L'attuale viene rivalutato ogni volta che il formale è usato.
+
+\begin{lstlisting}
+int i = 2;
+
+int fie(name int y) {
+    return y + y;
+}
+
+...
+int a = fie(i++);
+// here i has value 4; a has value 5
+\end{lstlisting}
+
+La prima valutazione di \texttt{i++} produce $2$ e incrementa \texttt{i}; la seconda produce $3$ e incrementa di nuovo \texttt{i}. Il risultato è $5$.
+
+\subsection{Call by Name e Value-Result non Coincidono}
+
+\begin{lstlisting}
+void fiefoo(valueresult/name int x,
+            valueresult/name int y) {
+    x = x + 1;
+    y = 1;
+}
+
+...
+int i = 1;
+int[] A = new int[5];
+A[1] = 4;
+fiefoo(i, A[i]);
+\end{lstlisting}
+
+Con value-result, il riferimento a \texttt{A[i]} viene fissato rispetto al valore iniziale di \texttt{i}. Con call by name, \texttt{A[i]} viene rivalutato dopo la modifica di \texttt{i}; perciò può essere aggiornato un elemento diverso dell'array.
+
+\subsection{Closure e Implementazione del Call by Name}
+
+Per implementare il call by name, il chiamante passa una \textbf{closure}:
+\[
+\mathrm{closure} = (\mathrm{expression}, \mathrm{environment}).
+\]
+
+In una macchina astratta con stack, la closure è una coppia di puntatori:
+\[
+\mathrm{closure} = (\mathrm{code\ pointer}, \mathrm{static\ chain\ pointer}).
+\]
+
+Ogni accesso al parametro formale rivaluta l'espressione nell'ambiente memorizzato. Questo rende il call by name molto costoso.
+
+\subsection{Jensen's Device}
+
+Il call by name permette di passare una espressione e una variabile che compare nell'espressione, ottenendo procedure specializzabili al momento della chiamata.
+
+\begin{lstlisting}
+int summation(name int exp; name int i;
+              int start; int stop) {
+    int acc = 0;
+    for (i = start, i <= stop, i++)
+        acc = acc + exp;
+    return acc;
+}
+
+int x = ...;
+...
+int y = summation(2*x*x - 2*x + 1, x, 1, 10);
+\end{lstlisting}
+
+La chiamata calcola:
+\[
+y = \sum_{x=1}^{10} (2x^2 - 2x + 1).
+\]
+
+\section{Funzioni di Ordine Superiore}
+
+Una funzione è di \textbf{ordine superiore} se accetta funzioni come parametri o restituisce funzioni come risultato. Un linguaggio è detto \textbf{higher-order} se consente almeno una di queste due possibilità.
+
+\subsection{Funzioni come Parametri}
+
+\begin{lstlisting}
+{
+    int x = 1;
+
+    int f(int y){
+        return x + y;
+    }
+
+    void g(int h(int b)){
+        int x = 2;
+        return h(3) + x;
+    }
+
+    ...
+    {
+        int x = 4;
+        int z = g(f);
+    }
+}
+\end{lstlisting}
+
+Il parametro \texttt{h} è una funzione. Quando \texttt{f} viene passata a \texttt{g}, occorre stabilire quale ambiente non locale usare per valutare \texttt{f}.
+
+\subsection{Deep Binding e Shallow Binding}
+
+Quando una funzione è passata come parametro, esistono due politiche di binding:
+\begin{itemize}
+  \item \textbf{deep binding}: l'ambiente è quello attivo quando si crea il legame tra parametro formale e funzione attuale;
+  \item \textbf{shallow binding}: l'ambiente è quello attivo quando la funzione viene invocata tramite il parametro formale.
+\end{itemize}
+
+Nel frammento precedente:
+\begin{itemize}
+  \item con \textit{scope statico} e \textit{deep binding}, \texttt{h(3)} restituisce $4$ e \texttt{g} restituisce $6$;
+  \item con \textit{scope dinamico} e \textit{deep binding}, \texttt{h(3)} restituisce $7$ e \texttt{g} restituisce $9$;
+  \item con \textit{scope dinamico} e \textit{shallow binding}, \texttt{h(3)} restituisce $5$ e \texttt{g} restituisce $7$.
+\end{itemize}
+
+La \textbf{binding policy} è concettualmente indipendente dalla politica di scope, anche se i linguaggi con scope statico usano normalmente deep binding.
+
+\subsection{Implementazione del Deep Binding}
+
+Con deep binding, al parametro funzionale non basta associare il puntatore al codice: occorre associare anche l'ambiente non locale.
+
+Il parametro funzionale è quindi rappresentato da una closure:
+\[
+\mathrm{closure}(f) = (\mathrm{code}(f), \mathrm{env}(f)).
+\]
+
+Quando il formale è invocato, la macchina astratta:
+\begin{enumerate}
+  \item trasferisce il controllo al codice memorizzato nella closure;
+  \item inizializza il puntatore alla catena statica con l'ambiente memorizzato nella closure.
+\end{enumerate}
+
+\subsection{Binding Policy e Scope Statico}
+
+Anche con scope statico, la binding policy è necessaria in presenza di ricorsione o mutua ricorsione, perché possono esistere più record di attivazione della stessa funzione.
+
+\begin{lstlisting}
+{
+    void foo(int f(), int x){
+        int fie(){
+            return x;
+        }
+        int z;
+        if (x == 0) z = f();
+        else foo(fie, 0);
+    }
+
+    int g(){
+        return 1;
+    }
+
+    foo(g, 1);
+}
+\end{lstlisting}
+
+La funzione \texttt{fie} contiene una referenza non locale a \texttt{x}. Esistono però due attivazioni di \texttt{foo}. Con deep binding, l'ambiente usato è quello attivo quando \texttt{fie} viene associata al formale, quindi \texttt{z} riceve $1$. Con shallow binding riceverebbe $0$.
+
+\subsection{Ingredienti dell'Ambiente}
+
+Per determinare correttamente l'ambiente di valutazione in un linguaggio a blocchi servono:
+\begin{itemize}
+  \item regole di visibilità;
+  \item eccezioni alle regole di visibilità;
+  \item regole di scope;
+  \item regole di passaggio dei parametri;
+  \item binding policy.
+\end{itemize}
+
+\subsection{Funzioni come Risultati}
+
+Se una funzione restituisce una funzione, il risultato non può essere rappresentato solo dal codice: deve includere anche l'ambiente in cui la funzione restituita dovrà essere valutata.
+
+\begin{lstlisting}
+{
+    int x = 1;
+
+    void->int F(){
+        int g(){
+            return x + 1;
+        }
+        return g;
+    }
+
+    void->int gg = F();
+    int z = gg();
+}
+\end{lstlisting}
+
+Il valore restituito da \texttt{F} è una closure:
+\[
+gg = (\mathrm{code}(g), \mathrm{env}(g)).
+\]
+
+\subsection{Upward Funarg Problem}
+
+Se l'ambiente catturato dalla funzione restituita è locale alla funzione che termina, la disciplina stack dei record di attivazione non è più sufficiente.
+
+\begin{lstlisting}
+void->int F(){
+    int x = 1;
+
+    int g(){
+        return x + 1;
+    }
+
+    return g;
+}
+
+void->int gg = F();
+int z = gg();
+\end{lstlisting}
+
+Quando \texttt{F} termina, il suo record di attivazione verrebbe rimosso dallo stack, ma \texttt{gg} ha ancora bisogno dell'ambiente contenente \texttt{x}. La soluzione generale è allocare gli ambienti nel \textbf{heap} e deallocarli tramite \textbf{garbage collection}.
+
+\section{Eccezioni}
+
+Un'\textbf{eccezione} è un evento rilevato durante l'esecuzione che non deve o non può essere gestito nel normale flusso di controllo.
+
+Può corrispondere a:
+\begin{itemize}
+  \item un errore semantico dinamico, come divisione per zero o overflow;
+  \item una condizione anomala definita dal programmatore;
+  \item una terminazione anticipata intenzionale di una computazione.
+\end{itemize}
+
+\subsection{Componenti di un Meccanismo di Eccezioni}
+
+Un linguaggio con eccezioni deve specificare:
+\begin{enumerate}
+  \item quali eccezioni possono essere definite o gestite;
+  \item come un'eccezione può essere sollevata;
+  \item come un'eccezione può essere intercettata e gestita.
+\end{enumerate}
+
+In genere servono due costrutti:
+\begin{itemize}
+  \item un \textbf{protected block}, che delimita il codice in cui intercettare eccezioni;
+  \item un \textbf{handler}, associato staticamente al protected block.
+\end{itemize}
+
+\subsection{Esempio di Gestione delle Eccezioni}
+
+\begin{lstlisting}
+class EmptyExcp extends Throwable {int x = 0;};
+
+int average(int[] V) throws EmptyExcp(){
+    if (length(V) == 0) throw new EmptyExcp();
+    else {
+        int s = 0;
+        for (int i = 0, i < length(V), i++)
+            s = s + V[i];
+    }
+    return s / length(V);
+};
+
+...
+try {
+    ...
+    average(W);
+    ...
+}
+catch (EmptyExcp e) {
+    write("Array empty");
+}
+\end{lstlisting}
+
+La clausola \texttt{throws} documenta che la funzione può terminare in modo anomalo. Il costrutto \texttt{throw} solleva l'eccezione. Il blocco \texttt{try} protegge una porzione di codice; \texttt{catch} contiene l'handler.
+
+\subsection{Propagazione}
+
+Quando un'eccezione viene sollevata:
+\begin{enumerate}
+  \item l'esecuzione del comando corrente viene interrotta;
+  \item i blocchi attivi vengono abbandonati;
+  \item la macchina astratta risale la catena dinamica;
+  \item il controllo passa al primo handler compatibile;
+  \item se non esiste un handler esplicito, interviene un handler di default.
+\end{enumerate}
+
+L'handler sostituisce la parte rimanente del protected block. Dopo l'esecuzione dell'handler, il controllo prosegue normalmente dopo il blocco di gestione.
+
+\subsection{Handling con Terminazione e con Ripresa}
+
+Il modello più comune è l'\textbf{handling with termination}: il costrutto in cui l'eccezione è stata rilevata termina. Alcuni linguaggi storici hanno usato \textbf{handling with resumption}, in cui l'handler può far riprendere l'esecuzione dal punto dell'errore; questo modello rende spesso gli errori più difficili da localizzare.
+
+\subsection{Eccezioni e Catena Dinamica}
+
+Le eccezioni propagano lungo la \textbf{catena dinamica}, anche se i nomi delle eccezioni seguono le regole statiche di scope.
+
+\begin{lstlisting}
+{
+    void f() throws X{
+        throw new X();
+    }
+
+    void g(int sw) throws X{
+        if (sw == 0) { f(); }
+        try {
+            f();
+        }
+        catch (X e) {
+            write("in g");
+        }
+    }
+
+    ...
+    try {
+        g(1);
+    }
+    catch (X e) {
+        write("in main");
+    }
+}
+\end{lstlisting}
+
+L'eccezione sollevata da \texttt{f} viene catturata dal più recente handler compatibile presente sullo stack di esecuzione.
+
+\subsection{Uso Pragmatico delle Eccezioni}
+
+Le eccezioni possono anche rendere più efficiente un algoritmo ordinario, interrompendo anticipatamente una computazione.
+
+\begin{lstlisting}
+type Node = {
+    int key;
+    Node FS;
+    Node FD;
+}
+
+int mul(Node alb){
+    if (alb == null){ return 1; }
+    return alb.key * mul(alb.FS) * mul(alb.FD);
+}
+\end{lstlisting}
+
+Se l'albero contiene uno zero, il prodotto è zero e non serve visitare il resto dell'albero.
+
+\begin{lstlisting}
+int mulAus(Node alb) throws Zero{
+    if (alb == null){ return 1; }
+    if (alb.key == 0) { throw new Zero(); }
+    return alb.key * mulAus(alb.FS) * mulAus(alb.FD);
+}
+
+int mulEff(Node alb){
+    try {
+        return mulAus(alb);
+    }
+    catch (Zero e) {
+        return 0;
+    };
+}
+\end{lstlisting}
+
+\texttt{mulEff} è un \textbf{wrapper}: esporta ai client un comportamento ordinario, mentre usa internamente un'eccezione per terminare in anticipo.
+
+\section{Implementazione delle Eccezioni}
+
+\subsection{Implementazione Basata sullo Stack}
+
+Una soluzione semplice consiste nel memorizzare nel record di attivazione un puntatore all'handler associato al protected block, insieme al tipo di eccezione gestita.
+
+Quando un'eccezione è sollevata:
+\begin{enumerate}
+  \item si cerca un handler nel record corrente;
+  \item se non è presente, si ripristina lo stato della macchina;
+  \item si rimuove il record dallo stack;
+  \item si rilancia l'eccezione nel chiamante.
+\end{enumerate}
+
+Questa tecnica è concettualmente semplice ma introduce overhead anche nel caso normale, perché entrare e uscire da protected block richiede aggiornamenti dello stack.
+
+\subsection{Implementazione con Tabella EH}
+
+Una soluzione più efficiente sposta parte del lavoro a tempo di compilazione. Il compilatore costruisce una tabella nascosta $EH$ contenente, per ogni protected block, una coppia:
+\[
+(i_p, i_g)
+\]
+dove $i_p$ è l'indirizzo di inizio del protected block e $i_g$ è l'indirizzo di inizio dell'handler.
+
+Quando un'eccezione è rilevata con program counter $pc$, la macchina astratta cerca una coppia tale che:
+\[
+i_p \leq pc \leq i_g
+\]
+con $i_p$ massimo tra quelli che soddisfano la condizione.
+
+Se $EH$ è ordinata per $i_p$, la ricerca può essere binaria:
+\[
+T_{\mathrm{search}} = O(\log n)
+\]
+dove $n$ è il numero di handler registrati.
+
+Questa tecnica costa di più quando l'eccezione è effettivamente sollevata, ma non costa nulla all'ingresso e all'uscita normale da un protected block.
+
+\subsection{Eccezioni e Scope Statico}
+
+I nomi delle eccezioni seguono lo \textbf{scope statico}. Questo può generare confusione quando due eccezioni hanno lo stesso nome in ambienti diversi.
+
+\begin{lstlisting}
+class X extends Exception {};
+
+class P{
+    void f() throws X{
+        throw new X();
+    }
+}
+
+class Q{
+    class X extends Exception {};
+
+    void g(){
+        P p = new P();
+        try {
+            p.f();
+        }
+        catch (X e){
+            System.out.println("in g");
+        }
+    }
+}
+\end{lstlisting}
+
+Il metodo \texttt{f} solleva l'eccezione \texttt{X} dichiarata globalmente; il \texttt{catch} dentro \texttt{Q} intercetta invece \texttt{Q.X}. In Java ciò produce errori statici perché l'eccezione sollevata non è catturata e non è dichiarata nella clausola \texttt{throws} di \texttt{g}.
+
+\section{Quadro Riassuntivo}
+
+\begin{center}
+\begin{tabular}{|p{3.2cm}|p{4.6cm}|p{5.6cm}|}
+\hline
+\textbf{Meccanismo} & \textbf{Comunicazione} & \textbf{Idea centrale} \\
+\hline
+Call by value & Input & Copia dell'r-value dell'attuale nel formale \\
+\hline
+Call by reference & Input/output & Il formale è alias dell'l-value dell'attuale \\
+\hline
+Call by constant & Input & Semantica per valore, implementazione anche per reference read-only \\
+\hline
+Call by result & Output & Copia finale dal formale all'attuale \\
+\hline
+Call by value-result & Input/output & Copia iniziale e copia finale, senza aliasing interno \\
+\hline
+Call by name & Input/output & Sostituzione capture-free dell'attuale e rivalutazione nell'ambiente del chiamante \\
+\hline
+Funzioni higher-order & Controllo come valore & Funzioni passate o restituite richiedono closure \\
+\hline
+Eccezioni & Salto controllato & Propagazione lungo la catena dinamica fino a un handler compatibile \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Sintesi Finale}
+
+L'astrazione del controllo fornisce i meccanismi fondamentali per decomporre programmi complessi in componenti più piccoli, riusabili e semanticamente controllati. I \textbf{sottoprogrammi} realizzano astrazione funzionale; le \textbf{discipline di passaggio dei parametri} definiscono il canale di comunicazione tra chiamante e chiamato; le \textbf{funzioni di ordine superiore} trattano il controllo come valore; le \textbf{closure} catturano codice e ambiente; le \textbf{eccezioni} astraggono trasferimenti non locali di controllo.
+
+Il tema comune è la separazione tra ciò che il programmatore vuole esprimere e i dettagli operativi della macchina astratta: record di attivazione, catene statiche e dinamiche, closure, handler e tabelle di eccezione sono i dispositivi implementativi che rendono possibile tale astrazione.
+
+\end{document}
